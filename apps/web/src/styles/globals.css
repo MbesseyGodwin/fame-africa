@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Default theme variables (overridden by JS from user prefs) ── */
+:root {
+  --color-primary: #534AB7;
+  --color-primary-light: #EEEDFE;
+  --color-primary-dark: #3C3489;
+  --color-accent: #EEEDFE;
+  --color-btn-bg: #534AB7;
+  --color-btn-text: #ffffff;
+  --color-header-bg: #534AB7;
+  --color-card-bg: #ffffff;
+  --font-family: system-ui, sans-serif;
+  --font-size-base: 14px;
+  --line-height-base: 1.5;
+  --font-weight-base: 400;
+  --border-radius: 8px;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-base);
+}
+
+/* ── Utility classes using CSS variables ─────────────────────── */
+.bg-primary    { background-color: var(--color-primary) !important; }
+.text-primary  { color: var(--color-primary) !important; }
+.border-primary { border-color: var(--color-primary) !important; }
+.bg-accent     { background-color: var(--color-accent) !important; }
+.bg-header     { background-color: var(--color-header-bg) !important; }
+.bg-card       { background-color: var(--color-card-bg) !important; }
+.btn-primary   { background-color: var(--color-btn-bg) !important; color: var(--color-btn-text) !important; }
+.rounded-theme { border-radius: var(--border-radius) !important; }
+
+/* ── Compact mode ───────────────────────────────────────────── */
+.compact .card       { padding: 8px 10px !important; }
+.compact .section    { margin-bottom: 12px !important; }
+.compact .stat-card  { padding: 8px !important; }
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.3s ease forwards; }
+
+@keyframes pulse-ring {
+  0%   { transform: scale(0.95); opacity: 1; }
+  70%  { transform: scale(1.1);  opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+.live-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-ring 1.5s ease-out infinite;
+}

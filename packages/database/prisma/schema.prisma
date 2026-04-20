@@ -1,0 +1,837 @@
+// ============================================================
+// VOTENAIJA — PRISMA DATABASE SCHEMA
+// Database: PostgreSQL
+// ORM: Prisma
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  VOTER
+  PARTICIPANT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum CycleStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  VOTING_OPEN
+  VOTING_CLOSED
+  REVEALING
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  PROCESSING_MEDIA // Newly added: currently uploading to Dropbox
+  UPLOAD_FAILED    // Newly added: background upload failed
+  PENDING_PAYMENT
+  APPLIED          // Paid 1k fee, in longlist
+  SHORTLISTED      // Selected for top 21/100
+  ACTIVE           // Paid 10k fee, official contestant
+  ELIMINATED
+  WINNER
+  DISQUALIFIED
+  WITHDRAWN
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  VOTE_RECEIVED
+  ELIMINATION_WARNING
+  ELIMINATED
+  WINNER_ANNOUNCED
+  CYCLE_STARTING
+  CYCLE_ENDING
+  PAYMENT_CONFIRMED
+  SYSTEM
+  AI_ADVICE
+  ADMIN_ACTION
+}
+
+enum FraudFlagType {
+  DUPLICATE_PHONE
+  DUPLICATE_EMAIL
+  DUPLICATE_DEVICE
+  RAPID_VOTES
+  SUSPICIOUS_PATTERN
+  REPORTED_BY_USER
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  DATE
+}
+
+enum AdPosition {
+  TOP
+  BOTTOM
+  BOTH
+}
+
+enum TiebreakerRule {
+  LOWEST_CUMULATIVE_VOTES
+  LATEST_REGISTRATION
+  RANDOM
+}
+
+enum ArenaEventStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ArenaParticipationStatus {
+  ATTENDED
+  ABSENT
+  DISQUALIFIED_DURING
+}
+
+// ============================================================
+// USERS
+// ============================================================
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  phone             String    @unique
+  passwordHash      String    @map("password_hash")
+  fullName          String    @map("full_name")
+  displayName       String    @map("display_name")
+  bio               String?   @db.Text
+  photoUrl          String?   @map("photo_url")
+  pushToken         String?   @map("push_token")
+  role              UserRole  @default(VOTER)
+  emailVerified     Boolean   @default(false) @map("email_verified")
+  phoneVerified     Boolean   @default(false) @map("phone_verified")
+  isActive          Boolean   @default(true) @map("is_active")
+  lastLoginAt       DateTime? @map("last_login_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  preferences       UserPreference?
+  participant       Participant?
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  passwordResets    PasswordReset[]
+  stans             Stan[]
+  kycRecord         KycRecord?
+  liveChatMessages  LiveChatMessage[]
+  reportsMade       Report[]  @relation(name: "ReportsMade")
+
+  @@map("users")
+}
+
+// ============================================================
+// USER PREFERENCES (Theme & UI settings)
+// ============================================================
+
+model UserPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  
+  // Theme
+  primaryColor      String   @default("#534AB7") @map("primary_color")
+  buttonColor       String   @default("#534AB7") @map("button_color")
+  headerColor       String   @default("#534AB7") @map("header_color")
+  accentColor       String   @default("#EEEDFE") @map("accent_color")
+  cardBackground    String   @default("#ffffff") @map("card_background")
+  textOnPrimary     String   @default("#ffffff") @map("text_on_primary")
+  darkMode          Boolean  @default(false) @map("dark_mode")
+  
+  // Typography
+  fontFamily        String   @default("system-ui,sans-serif") @map("font_family")
+  fontSize          Int      @default(14) @map("font_size")
+  lineHeight        Float    @default(1.5) @map("line_height")
+  fontWeight        String   @default("400") @map("font_weight")
+  
+  // Layout
+  borderRadius      String   @default("8px") @map("border_radius")
+  compactMode       Boolean  @default(false) @map("compact_mode")
+  showAvatars       Boolean  @default(true) @map("show_avatars")
+  
+  // Notifications
+  emailNotifications   Boolean @default(true) @map("email_notifications")
+  smsNotifications     Boolean @default(true) @map("sms_notifications")
+  pushNotifications    Boolean @default(true) @map("push_notifications")
+  
+  colorTheme          String? @default("default") @map("color_theme")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+// ============================================================
+// COMPETITION CYCLES
+// ============================================================
+
+model CompetitionCycle {
+  id                  String      @id @default(cuid())
+  cycleName           String      @map("cycle_name")
+  cycleNumber         Int         @map("cycle_number")
+  status              CycleStatus @default(DRAFT)
+  description         String?     @db.Text
+  bannerImageUrl      String?     @map("banner_image_url")
+  
+  // Dates
+  registrationOpen    DateTime    @map("registration_open")
+  registrationClose   DateTime    @map("registration_close")
+  votingOpen          DateTime    @map("voting_open")
+  votingClose         DateTime    @map("voting_close")
+  revealAt            DateTime    @map("reveal_at")
+  
+  // Financials
+  registrationFee     Decimal     @default(0) @map("registration_fee") @db.Decimal(10, 2)
+  feeCurrency         String      @default("NGN") @map("fee_currency")
+  
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  settings            CompetitionSetting[]
+  participants        Participant[]
+  votes               Vote[]
+  eliminations        Elimination[]
+  dailyTallies        DailyVoteTally[]
+  sponsors            Sponsor[]
+  notifications       Notification[]
+  pastWinners         PastWinner[]
+  auditProofs         AuditProof[]
+  aiAdvice            AiAdvice[]
+  arenaEvents         ArenaEvent[]
+  liveStreams         LiveStream[]
+
+  @@map("competition_cycles")
+}
+
+// ============================================================
+// COMPETITION SETTINGS (all config stored in DB as metadata)
+// ============================================================
+
+model CompetitionSetting {
+  id              String      @id @default(cuid())
+  cycleId         String?     @map("cycle_id")
+  key             String
+  value           String      @db.Text
+  type            SettingType @default(STRING)
+  label           String?
+  description     String?     @db.Text
+  isLocked        Boolean     @default(false) @map("is_locked")
+  isGlobal        Boolean     @default(false) @map("is_global")
+  previousValue   String?     @db.Text @map("previous_value")
+  updatedById     String?     @map("updated_by_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  cycle           CompetitionCycle? @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, key])
+  @@map("competition_settings")
+}
+
+// ============================================================
+// PARTICIPANTS
+// ============================================================
+
+model Participant {
+  id                  String            @id @default(cuid())
+  userId              String            @unique @map("user_id")
+  cycleId             String            @map("cycle_id")
+  
+  // Registration
+  voteLinkSlug        String            @unique @map("vote_link_slug")
+  registrationFeePaid Boolean           @default(false) @map("registration_fee_paid")
+  paymentReference    String?           @map("payment_reference")
+  paymentAmount       Decimal?          @map("payment_amount") @db.Decimal(10, 2)
+  paidAt              DateTime?         @map("paid_at")
+  
+  // Profile (can override user profile for competition)
+  displayName         String            @map("display_name")
+  bio                 String?           @db.Text
+  photoUrl            String?           @map("photo_url")
+  videoUrl            String?           @map("video_url")
+  category            String?
+  campaignCardUrl     String?           @map("campaign_card_url")
+  state               String?
+  city                String?
+  nationality         String?
+  
+  // Social Links
+  instagramUrl        String?           @map("instagram_url")
+  twitterUrl          String?           @map("twitter_url")
+  tiktokUrl           String?           @map("tiktok_url")
+  youtubeUrl          String?           @map("youtube_url")
+  
+  // Status
+  status              ParticipantStatus @default(PENDING_PAYMENT)
+  eliminatedAt        DateTime?         @map("eliminated_at")
+  eliminationDay      Int?              @map("elimination_day")
+  finalRank           Int?              @map("final_rank")
+  
+  // Totals (denormalized for performance)
+  totalVotes          Int               @default(0) @map("total_votes")
+  stanCount           Int               @default(0) @map("stan_count")
+
+  // Arena Stats
+  arenaWins           Int               @default(0) @map("arena_wins")
+  arenaStrikes        Int               @default(0) @map("arena_strikes")
+
+  // Withdrawal
+  withdrawalToken           String?   @map("withdrawal_token")
+  withdrawalTokenExpiresAt  DateTime? @map("withdrawal_token_expires_at")
+
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+
+  // Relations
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycle               CompetitionCycle  @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  votes               Vote[]
+  dailyTallies        DailyVoteTally[]
+  eliminations        Elimination[]
+  stans               Stan[]
+  pastWinner          PastWinner?
+  aiAdvice            AiAdvice[]
+  arenaParticipation  ArenaParticipation[]
+  liveStreams         LiveStream[]
+
+  @@map("participants")
+}
+
+// ============================================================
+// STANS (Followers/Fans)
+// ============================================================
+
+model Stan {
+  id              String      @id @default(cuid())
+  userId          String      @map("user_id")
+  participantId   String      @map("participant_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  participant     Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, participantId])
+  @@index([participantId])
+  @@map("stans")
+}
+
+// ============================================================
+// VOTES
+// ============================================================
+
+model Vote {
+  id                String    @id @default(cuid())
+  participantId     String    @map("participant_id")
+  cycleId           String    @map("cycle_id")
+  
+  // Voter identity (hashed for privacy, raw for deduplication)
+  voterPhone        String?   @map("voter_phone")
+  voterPhoneHash    String?   @map("voter_phone_hash")
+  voterEmail        String?   @map("voter_email")
+  voterEmailHash    String?   @map("voter_email_hash")
+  deviceFingerprint String?   @map("device_fingerprint")
+  ipAddress         String?   @map("ip_address")
+  
+  // Timing
+  dayNumber         Int       @map("day_number")
+  voteDate          DateTime  @map("vote_date") @db.Date
+  verifiedAt        DateTime? @map("verified_at")
+  
+  // Tracking
+  source            String?   // 'link' | 'app' | 'web'
+  userAgent         String?   @map("user_agent") @db.Text
+  
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  participant       Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  cycle             CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  fraudFlags        FraudFlag[]
+
+  @@unique([voterPhoneHash, cycleId, voteDate])
+  @@unique([voterEmailHash, cycleId, voteDate])
+  @@index([participantId, voteDate])
+  @@index([cycleId, voteDate])
+  @@map("votes")
+}
+
+// ============================================================
+// OTP VERIFICATION TOKENS
+// ============================================================
+
+model OtpToken {
+  id            String    @id @default(cuid())
+  phone         String?
+  email         String?   @map("voter_email")
+  otpCode       String    @map("otp_code")
+  purpose       String    // 'vote' | 'register' | 'login' | 'reset'
+  participantId String?   @map("participant_id")
+  cycleId       String?   @map("cycle_id")
+  expiresAt     DateTime  @map("expires_at")
+  usedAt        DateTime? @map("used_at")
+  attemptCount  Int       @default(0) @map("attempt_count")
+  ipAddress     String?   @map("ip_address")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([phone, purpose])
+  @@map("otp_tokens")
+}
+
+// ============================================================
+// DAILY VOTE TALLIES (pre-aggregated for performance)
+// ============================================================
+
+model DailyVoteTally {
+  id                String    @id @default(cuid())
+  participantId     String    @map("participant_id")
+  cycleId           String    @map("cycle_id")
+  dayNumber         Int       @map("day_number")
+  voteDate          DateTime  @map("vote_date") @db.Date
+  voteCount         Int       @default(0) @map("vote_count")
+  cumulativeVotes   Int       @default(0) @map("cumulative_votes")
+  isEliminationDay  Boolean   @default(false) @map("is_elimination_day")
+  wasEliminated     Boolean   @default(false) @map("was_eliminated")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  participant       Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  cycle             CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, voteDate])
+  @@index([cycleId, voteDate])
+  @@map("daily_vote_tallies")
+}
+
+// ============================================================
+// ELIMINATIONS
+// ============================================================
+
+model Elimination {
+  id                String    @id @default(cuid())
+  cycleId           String    @map("cycle_id")
+  participantId     String    @map("participant_id")
+  dayNumber         Int       @map("day_number")
+  eliminationDate   DateTime  @map("elimination_date") @db.Date
+  
+  // Vote data at time of elimination
+  votesOnDay        Int       @map("votes_on_day")
+  cumulativeVotes   Int       @map("cumulative_votes")
+  totalParticipantsLeft Int   @map("total_participants_left")
+  
+  // Tiebreaker
+  tiebreakerUsed    Boolean   @default(false) @map("tiebreaker_used")
+  tiebreakerRule    TiebreakerRule? @map("tiebreaker_rule")
+  
+  // Announcement
+  announcedAt       DateTime? @map("announced_at")
+  notificationSent  Boolean   @default(false) @map("notification_sent")
+  
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  cycle             CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  participant       Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId, eliminationDate])
+  @@map("eliminations")
+}
+
+// ============================================================
+// SPONSORS
+// ============================================================
+
+model Sponsor {
+  id                String    @id @default(cuid())
+  cycleId           String    @map("cycle_id")
+  companyName       String    @map("company_name")
+  logoUrl           String?   @map("logo_url")
+  bannerImageUrl    String?   @map("banner_image_url")
+  websiteUrl        String?   @map("website_url")
+  
+  // Prize
+  prizeDescription  String?   @map("prize_description") @db.Text
+  prizeAmount       Decimal?  @map("prize_amount") @db.Decimal(10, 2)
+  prizeCurrency     String    @default("NGN") @map("prize_currency")
+  prizeRank         Int?      @map("prize_rank")
+  
+  // Ad config
+  adPosition        AdPosition @default(TOP) @map("ad_position")
+  isActive          Boolean   @default(true) @map("is_active")
+  displayOrder      Int       @default(0) @map("display_order")
+  
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  cycle             CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  adImpressions     AdImpression[]
+
+  @@map("sponsors")
+}
+
+// ============================================================
+// AD IMPRESSIONS (tracking)
+// ============================================================
+
+model AdImpression {
+  id              String    @id @default(cuid())
+  sponsorId       String    @map("sponsor_id")
+  voterPhoneHash  String?   @map("voter_phone_hash")
+  pageContext     String?   @map("page_context")
+  shownAt         DateTime  @default(now()) @map("shown_at")
+  ipAddress       String?   @map("ip_address")
+
+  sponsor         Sponsor   @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@index([sponsorId, shownAt])
+  @@map("ad_impressions")
+}
+
+// ============================================================
+// FRAUD FLAGS
+// ============================================================
+
+model FraudFlag {
+  id          String        @id @default(cuid())
+  voteId      String        @map("vote_id")
+  flagType    FraudFlagType @map("flag_type")
+  details     String?       @db.Text
+  resolved    Boolean       @default(false)
+  resolvedBy  String?       @map("resolved_by")
+  resolvedAt  DateTime?     @map("resolved_at")
+  resolution  String?       @db.Text
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  vote        Vote          @relation(fields: [voteId], references: [id], onDelete: Cascade)
+
+  @@index([resolved, createdAt])
+  @@map("fraud_flags")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String           @map("user_id")
+  cycleId     String?          @map("cycle_id")
+  type        NotificationType
+  title       String
+  body        String           @db.Text
+  data        Json?
+  readAt      DateTime?        @map("read_at")
+  sentViaSms  Boolean          @default(false) @map("sent_via_sms")
+  sentViaEmail Boolean         @default(false) @map("sent_via_email")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycle       CompetitionCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ============================================================
+// AUDIT LOGS
+// ============================================================
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?   @map("user_id")
+  action      String
+  entityType  String    @map("entity_type")
+  entityId    String?   @map("entity_id")
+  oldValue    Json?     @map("old_value")
+  newValue    Json?     @map("new_value")
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// PASSWORD RESETS
+// ============================================================
+
+model PasswordReset {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  token       String    @unique
+  expiresAt   DateTime  @map("expires_at")
+  usedAt      DateTime? @map("used_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+// ============================================================
+// KYC / AML RECORDS
+// ============================================================
+
+model KycRecord {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id") @unique
+  bvn         String
+  idType      String      @map("id_type") // e.g. NIN, PASSPORT
+  idNumber    String?     @map("id_number")
+  idImageUrl  String      @map("id_image_url")
+  status      KycStatus   @default(PENDING)
+  rejectionReason String? @db.Text @map("rejection_reason")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kyc_records")
+}
+
+// ============================================================
+// PAST WINNERS SHOWCASE
+// ============================================================
+
+model PastWinner {
+  id              String      @id @default(cuid())
+  participantId   String      @map("participant_id") @unique
+  cycleId         String      @map("cycle_id")
+  prizeAmount     Decimal     @map("prize_amount") @db.Decimal(10, 2)
+  prizePhotoUrl   String?     @map("prize_photo_url")
+  winQuote        String?     @db.Text @map("win_quote")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  participant     Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  cycle           CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@map("past_winners")
+}
+
+// ============================================================
+// AI ADVICE
+// ============================================================
+
+model AiAdvice {
+  id              String      @id @default(cuid())
+  participantId   String      @map("participant_id")
+  cycleId         String      @map("cycle_id")
+  adviceText      String      @db.Text @map("advice_text")
+  analysisData    Json?       @map("analysis_data") // Data used for analysis
+  tone            String      @default("coach")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  participant     Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  cycle           CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([participantId, createdAt])
+  @@map("ai_advice")
+}
+
+// ============================================================
+// AUDIT PROOFS (Blockchain Anchors)
+// ============================================================
+
+model AuditProof {
+  id              String      @id @default(cuid())
+  cycleId         String      @map("cycle_id")
+  dayNumber       Int         @map("day_number")
+  auditDate       DateTime    @map("audit_date") @db.Date
+  merkleRoot      String      @map("merkle_root")
+  voteCount       Int         @map("vote_count")
+  txHash          String?     @map("tx_hash") // Optional link to external blockchain tx
+  proofData       Json?       @map("proof_data") // Raw proof metadata
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  cycle           CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, auditDate])
+  @@map("audit_proofs")
+}
+
+// ============================================================
+// THE ARENA (Mind Games & IQ Blitz)
+// ============================================================
+
+model ArenaEvent {
+  id              String           @id @default(cuid())
+  cycleId         String           @map("cycle_id")
+  title           String
+  description     String?          @db.Text
+  scheduledAt     DateTime         @map("scheduled_at")
+  durationMinutes Int              @default(60) @map("duration_minutes")
+  status          ArenaEventStatus @default(SCHEDULED)
+  
+  // Scoring config
+  pointsPerCorrect Int             @default(100) @map("points_per_correct")
+  
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  cycle           CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  participations  ArenaParticipation[]
+  questions       ArenaQuestion[]
+
+  @@map("arena_events")
+}
+
+model ArenaQuestion {
+  id                String      @id @default(cuid())
+  eventId           String      @map("event_id")
+  questionText      String      @db.Text @map("question_text")
+  options           Json        // Array of strings
+  correctOptionIndex Int        @map("correct_option_index")
+  timerSeconds      Int         @default(30) @map("timer_seconds")
+  order             Int         @default(0)
+  
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  event             ArenaEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("arena_questions")
+}
+
+model ArenaParticipation {
+  id              String                   @id @default(cuid())
+  eventId         String                   @map("event_id")
+  participantId   String                   @map("participant_id")
+  status          ArenaParticipationStatus @default(ABSENT)
+  
+  score           Int                      @default(0)
+  correctAnswers  Int                      @default(0) @map("correct_answers")
+  wrongAnswers    Int                      @default(0) @map("wrong_answers")
+  totalTimeSeconds Int                     @default(0) @map("total_time_seconds")
+  
+  joinedAt        DateTime?                @map("joined_at")
+  completedAt     DateTime?                @map("completed_at")
+  
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  event           ArenaEvent               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participant     Participant             @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, participantId])
+  @@map("arena_participation")
+}
+
+// ============================================================
+// LIVE STREAMING & INTERACTION
+// ============================================================
+
+enum StreamStatus {
+  LIVE
+  ENDED
+  PROCESSING
+  RECORDED
+}
+
+model LiveStream {
+  id              String        @id @default(cuid())
+  hostId          String        @map("host_id")
+  cycleId         String        @map("cycle_id")
+  
+  status          StreamStatus  @default(LIVE)
+  channelName     String        @map("channel_name")
+  title           String?
+  
+  viewerCount     Int           @default(0) @map("viewer_count")
+  peakViewers     Int           @default(0) @map("peak_viewers")
+  totalLikes      Int           @default(0) @map("total_likes")
+  
+  // Recording
+  recordingUrl    String?       @map("recording_url")
+  thumbnailUrl    String?       @map("thumbnail_url")
+  dropboxPath     String?       @map("dropbox_path")
+  
+  startTime       DateTime      @default(now()) @map("start_time")
+  endTime         DateTime?     @map("end_time")
+  
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  host            Participant      @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  cycle           CompetitionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  chatMessages    LiveChatMessage[]
+
+  @@index([hostId, status])
+  @@index([cycleId, status])
+  @@map("live_streams")
+}
+
+model LiveChatMessage {
+  id              String      @id @default(cuid())
+  streamId        String      @map("stream_id")
+  userId          String      @map("user_id")
+  content         String      @db.Text
+  
+  isPinned        Boolean     @default(false) @map("is_pinned")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  stream          LiveStream  @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([streamId, createdAt])
+  @@map("live_chat_messages")
+}
+
+// ============================================================
+// MODERATION & REPORTS
+// ============================================================
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id                String       @id @default(cuid())
+  reporterId        String       @map("reporter_id")
+  targetParticipantId String?     @map("target_participant_id")
+  targetStreamId    String?      @map("target_stream_id")
+  reason            String       @db.Text
+  status            ReportStatus @default(PENDING)
+  actionTaken       String?      @map("action_taken") @db.Text
+  
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  // Relations (optional link to user)
+  reporter          User         @relation(name: "ReportsMade", fields: [reporterId], references: [id])
+
+  @@map("reports")
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.next/
+.expo/
+*.env
+.env.local
+.env.production
+.DS_Store
+*.log
+coverage/
+.nyc_output/
+prisma/migrations/dev/
+*.tsbuildinfo
+build/
+.turbo/

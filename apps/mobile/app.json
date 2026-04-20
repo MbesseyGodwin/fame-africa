@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "FameAfrica",
+    "slug": "fameafrica-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fameafrica.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FameAfrica needs access to your camera for live streaming.",
+        "NSMicrophoneUsageDescription": "FameAfrica needs access to your microphone for live streaming."
+      }
+    },
+    "android": {
+      "package": "com.fameafrica.mobile",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "ACCESS_WIFI_STATE",
+        "ACCESS_NETWORK_STATE",
+        "INTERNET",
+        "BLUETOOTH"
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-video",
+      "expo-camera",
+      "expo-av",
+      "expo-notifications",
+      "expo-dev-client"
+    ],
+
+    "scheme": "fameafrica",
+    "sdkVersion": "54.0.0"
+  }
+}

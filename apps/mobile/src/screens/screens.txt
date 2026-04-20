@@ -1,0 +1,44 @@
+Here is the complete map of every screen and its correct navigation path:
+
+All Screen Routes in VoteNaija Mobile
+📱 Tab Screens (bottom navigation bar)
+Screen	Path	Notes
+Home / Feed	/(tabs) or /(tabs)/index	The default tab
+Participants List	/(tabs)/participants	Browse all contestants
+Notifications	/(tabs)/notifications	
+Profile	/(tabs)/profile	
+Results	/(tabs)/results	
+🔐 Auth Screens
+Screen	Path
+Welcome / Onboarding	/(auth)/welcome
+Login	/(auth)/login
+Register	/(auth)/register
+Verify OTP	/(auth)/verify-otp
+Forgot Password	/(auth)/forgot-password
+📊 Dashboard Screens
+Screen	Path
+Edit Profile	/dashboard/edit-profile
+Analytics / Performance	/dashboard/analytics
+⚙️ Settings Screens
+Screen	Path
+Security & Password	/settings/security
+Help & Support	/settings/support
+Privacy & Legal	/settings/legal
+🏆 Other Screens
+Screen	Path
+Join Competition (Register)	/participants/register
+Vote for Contestant	/vote/[slug] e.g. /vote/ada-2025
+✅ Fix for the Settings button
+There is no /settings/settings file — that path doesn't exist. The SettingsScreen.tsx component itself is the settings tab. Fix the navigation to link to the tab instead:
+
+tsx
+// ❌ Wrong — route doesn't exist
+onPress={() => router.push('/settings/settings')}
+// ✅ Correct — SettingsScreen IS the profile tab (or a custom tab)
+// If settings is in the profile tab:
+onPress={() => router.push('/(tabs)/profile')}
+Since there's no dedicated settings tab, you have two options:
+
+Add a settings tab — create app/(tabs)/settings.tsx
+Keep it in the profile tab — remove the redundant Settings button from ProfileScreen (the user is already on that screen when they see it)
+Since SettingsScreen.tsx is used inside the profile area, option 2 is the cleanest. Want me to create a dedicated settings tab instead?

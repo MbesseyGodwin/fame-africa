@@ -1,0 +1,1762 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "VoteNaija API",
+    "description": "Complete API documentation for the VoteNaija reality competition platform.\n\nAll endpoints are prefixed with `/api/v1`. Authentication uses Bearer JWT tokens — click **Authorize** and paste your access token.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "VoteNaija Dev Team"
+    }
+  },
+  "host": "localhost:4000",
+  "basePath": "/api/v1",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "bearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Enter your JWT token as: **Bearer &lt;token&gt;**"
+    }
+  },
+  "tags": [
+    { "name": "Auth", "description": "Registration, login, OTP, password reset" },
+    { "name": "Users", "description": "User profile and preferences" },
+    { "name": "Competitions", "description": "Competition cycles" },
+    { "name": "Participants", "description": "Contestant registration, dashboard, analytics" },
+    { "name": "Voting", "description": "OTP-verified voting flow" },
+    { "name": "Leaderboard", "description": "Public rankings and daily vote leaderboards" },
+    { "name": "Eliminations", "description": "Elimination results" },
+    { "name": "Sponsors", "description": "Sponsor banners and ad tracking" },
+    { "name": "Notifications", "description": "User notifications" },
+    { "name": "Stans", "description": "Fan clubs — stan/unstan contestants" },
+    { "name": "Admin", "description": "Admin-only management endpoints (requires ADMIN role)" }
+  ],
+  "paths": {
+
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register a new account",
+        "description": "Creates a new user account. Rate-limited.",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["fullName", "displayName", "email", "phone", "password"],
+            "properties": {
+              "fullName": { "type": "string", "example": "Godwin Mbessey", "minLength": 2, "maxLength": 100 },
+              "displayName": { "type": "string", "example": "GodwinM", "minLength": 2, "maxLength": 50 },
+              "email": { "type": "string", "format": "email", "example": "godwin@example.com" },
+              "phone": { "type": "string", "example": "+2348012345678" },
+              "password": { "type": "string", "example": "MyPass@123", "minLength": 8 }
+            }
+          }
+        }],
+        "responses": {
+          "201": { "description": "Account created successfully" },
+          "422": { "description": "Validation error" },
+          "429": { "description": "Too many requests" }
+        }
+      }
+    },
+
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login with email and password",
+        "description": "Returns access and refresh tokens. Rate-limited.",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["email", "password"],
+            "properties": {
+              "email": { "type": "string", "format": "email", "example": "admin@votenaija.ng" },
+              "password": { "type": "string", "example": "Admin@VoteNaija2026!" }
+            }
+          }
+        }],
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean" },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": { "type": "string" },
+                    "refreshToken": { "type": "string" },
+                    "user": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials" },
+          "429": { "description": "Too many attempts" }
+        }
+      }
+    },
+
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout (invalidate session)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Logged out successfully" }
+        }
+      }
+    },
+
+    "/auth/send-otp": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Send OTP to phone number",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["phone", "purpose"],
+            "properties": {
+              "phone": { "type": "string", "example": "+2348012345678" },
+              "purpose": { "type": "string", "enum": ["register", "login", "vote", "reset"], "example": "login" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "OTP sent" },
+          "429": { "description": "Too many requests" }
+        }
+      }
+    },
+
+    "/auth/verify-otp": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify OTP code",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["phone", "otpCode", "purpose"],
+            "properties": {
+              "phone": { "type": "string", "example": "+2348012345678" },
+              "otpCode": { "type": "string", "example": "123456", "minLength": 6, "maxLength": 6 },
+              "purpose": { "type": "string", "enum": ["register", "login", "vote", "reset"] }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "OTP verified" },
+          "400": { "description": "Invalid or expired OTP" }
+        }
+      }
+    },
+
+    "/auth/refresh-token": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Refresh access token",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["refreshToken"],
+            "properties": {
+              "refreshToken": { "type": "string" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "New access token returned" },
+          "401": { "description": "Invalid refresh token" }
+        }
+      }
+    },
+
+    "/auth/forgot-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Request password reset email",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["email"],
+            "properties": {
+              "email": { "type": "string", "format": "email", "example": "user@example.com" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Reset email sent" }
+        }
+      }
+    },
+
+    "/auth/reset-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Reset password with token",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["token", "password"],
+            "properties": {
+              "token": { "type": "string" },
+              "password": { "type": "string", "minLength": 8, "example": "NewPass@123" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Password reset successful" }
+        }
+      }
+    },
+
+    "/auth/verify-email": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Send email verification",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Verification email sent" }
+        }
+      }
+    },
+
+    "/auth/request-deletion": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Request account deletion (sends security code)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Security code sent to email" }
+        }
+      }
+    },
+
+    "/auth/confirm-deletion": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Confirm account deletion with security code",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["otpCode"],
+            "properties": {
+              "otpCode": { "type": "string", "example": "123456" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Account deleted" }
+        }
+      }
+    },
+
+
+    "/users/me": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get current user profile",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "User profile with preferences and participant info" },
+          "401": { "description": "Not authenticated" }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update user profile",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "fullName": { "type": "string", "example": "Godwin M" },
+              "displayName": { "type": "string", "example": "GodwinM" },
+              "bio": { "type": "string", "example": "Music lover and contestant" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Profile updated" }
+        }
+      }
+    },
+
+    "/users/me/preferences": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user preferences (theme, notifications, etc.)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "User preferences object" }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update user preferences",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "primaryColor": { "type": "string", "example": "#534AB7" },
+              "darkMode": { "type": "boolean", "example": false },
+              "emailNotifications": { "type": "boolean", "example": true },
+              "smsNotifications": { "type": "boolean", "example": false },
+              "pushNotifications": { "type": "boolean", "example": true },
+              "fontSize": { "type": "integer", "example": 14 },
+              "borderRadius": { "type": "string", "example": "8px" },
+              "compactMode": { "type": "boolean", "example": false }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Preferences saved" }
+        }
+      }
+    },
+
+    "/users/me/photo": {
+      "post": {
+        "tags": ["Users"],
+        "summary": "Upload profile photo",
+        "security": [{ "bearerAuth": [] }],
+        "consumes": ["multipart/form-data"],
+        "parameters": [{
+          "in": "formData",
+          "name": "photo",
+          "type": "file",
+          "required": true,
+          "description": "Profile photo to upload"
+        }],
+        "responses": {
+          "200": { "description": "Photo uploaded, temporary URL returned" },
+          "400": { "description": "No file uploaded" }
+        }
+      }
+    },
+
+
+    "/competitions/current": {
+      "get": {
+        "tags": ["Competitions"],
+        "summary": "Get the current active competition cycle",
+        "responses": {
+          "200": {
+            "description": "Current cycle object (DRAFT, REGISTRATION_OPEN, VOTING_OPEN, etc.)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean" },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "cycleName": { "type": "string" },
+                    "status": { "type": "string", "enum": ["DRAFT", "REGISTRATION_OPEN", "REGISTRATION_CLOSED", "VOTING_OPEN", "COMPLETED", "CANCELLED"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/competitions/{id}": {
+      "get": {
+        "tags": ["Competitions"],
+        "summary": "Get competition cycle by ID",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "description": "Competition cycle ID"
+        }],
+        "responses": {
+          "200": { "description": "Cycle details" }
+        }
+      }
+    },
+
+    "/competitions/{id}/stats": {
+      "get": {
+        "tags": ["Competitions"],
+        "summary": "Get competition statistics",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": {
+            "description": "Stats object",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean" },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "total": { "type": "integer" },
+                    "active": { "type": "integer" },
+                    "eliminated": { "type": "integer" },
+                    "totalVotes": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+
+    "/participants": {
+      "get": {
+        "tags": ["Participants"],
+        "summary": "List all participants (public)",
+        "parameters": [
+          { "in": "query", "name": "cycleId", "type": "string", "description": "Filter by cycle" },
+          { "in": "query", "name": "status", "type": "string", "enum": ["ACTIVE", "ELIMINATED", "DISQUALIFIED"] },
+          { "in": "query", "name": "category", "type": "string" },
+          { "in": "query", "name": "page", "type": "integer", "default": 1 },
+          { "in": "query", "name": "limit", "type": "integer", "default": 20 }
+        ],
+        "responses": {
+          "200": { "description": "Paginated list of participants" }
+        }
+      }
+    },
+
+    "/participants/register": {
+      "post": {
+        "tags": ["Participants"],
+        "summary": "Register as a contestant",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["cycleId", "displayName"],
+            "properties": {
+              "cycleId": { "type": "string" },
+              "displayName": { "type": "string", "example": "DJ Starboy", "minLength": 2, "maxLength": 50 },
+              "bio": { "type": "string", "example": "Lagos-based DJ ready to win!" },
+              "state": { "type": "string", "example": "Lagos" },
+              "city": { "type": "string", "example": "Ikeja" }
+            }
+          }
+        }],
+        "responses": {
+          "201": { "description": "Registered successfully" },
+          "400": { "description": "Already registered or registration closed" }
+        }
+      }
+    },
+
+    "/participants/{slug}": {
+      "get": {
+        "tags": ["Participants"],
+        "summary": "Get participant by slug (public)",
+        "parameters": [{
+          "in": "path",
+          "name": "slug",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Participant profile" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+
+    "/participants/me/dashboard": {
+      "get": {
+        "tags": ["Participants"],
+        "summary": "Get contestant's mobilization dashboard",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Dashboard with stats, ranks, vote link, campaign card",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean" },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "participant": { "type": "object" },
+                    "cycle": { "type": "object" },
+                    "todayVotes": { "type": "integer" },
+                    "currentRank": { "type": "integer" },
+                    "activeParticipants": { "type": "integer" },
+                    "voteLink": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/participants/me/analytics": {
+      "get": {
+        "tags": ["Participants"],
+        "summary": "Get contestant's daily vote analytics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Analytics with daily tallies" }
+        }
+      }
+    },
+
+    "/participants/me/generate-card": {
+      "post": {
+        "tags": ["Participants"],
+        "summary": "Generate viral campaign card image",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Campaign card URL returned" }
+        }
+      }
+    },
+
+    "/participants/me/profile": {
+      "put": {
+        "tags": ["Participants"],
+        "summary": "Update contestant profile",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "displayName": { "type": "string" },
+              "bio": { "type": "string" },
+              "state": { "type": "string" },
+              "city": { "type": "string" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Profile updated" }
+        }
+      }
+    },
+
+    "/participants/payment/webhook": {
+      "post": {
+        "tags": ["Participants"],
+        "summary": "Payment provider webhook",
+        "description": "Called by payment gateway to confirm registration fee payment.",
+        "responses": {
+          "200": { "description": "Webhook processed" }
+        }
+      }
+    },
+
+
+    "/votes/send-otp": {
+      "post": {
+        "tags": ["Voting"],
+        "summary": "Send vote OTP to voter's phone",
+        "description": "Sends a 6-digit OTP code to verify the voter before casting. Rate-limited.",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["participantSlug", "voterPhone", "voterEmail"],
+            "properties": {
+              "participantSlug": { "type": "string", "example": "dj-starboy" },
+              "voterPhone": { "type": "string", "example": "+2348012345678" },
+              "voterEmail": { "type": "string", "format": "email", "example": "voter@example.com" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "OTP sent to phone" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+
+    "/votes/cast": {
+      "post": {
+        "tags": ["Voting"],
+        "summary": "Cast a verified vote",
+        "description": "Submit the OTP to cast the vote. Rate-limited.",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["participantSlug", "voterPhone", "voterEmail", "otpCode"],
+            "properties": {
+              "participantSlug": { "type": "string", "example": "dj-starboy" },
+              "voterPhone": { "type": "string", "example": "+2348012345678" },
+              "voterEmail": { "type": "string", "format": "email", "example": "voter@example.com" },
+              "otpCode": { "type": "string", "example": "123456" },
+              "deviceFingerprint": { "type": "string" },
+              "source": { "type": "string", "enum": ["link", "app", "web"], "example": "app" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Vote cast successfully" },
+          "400": { "description": "Invalid OTP or already voted" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+
+    "/votes/check/{phone}": {
+      "get": {
+        "tags": ["Voting"],
+        "summary": "Check if a phone number has already voted",
+        "parameters": [
+          { "in": "path", "name": "phone", "required": true, "type": "string", "description": "Voter phone number" },
+          { "in": "query", "name": "cycleId", "type": "string", "description": "Competition cycle ID" }
+        ],
+        "responses": {
+          "200": { "description": "Vote status check result" }
+        }
+      }
+    },
+
+
+    "/eliminations/current-cycle": {
+      "get": {
+        "tags": ["Eliminations"],
+        "summary": "Get all eliminations for the current voting cycle",
+        "responses": {
+          "200": { "description": "List of eliminated participants with details" }
+        }
+      }
+    },
+
+    "/eliminations/today": {
+      "get": {
+        "tags": ["Eliminations"],
+        "summary": "Get today's eliminations",
+        "responses": {
+          "200": { "description": "Eliminations that occurred today" }
+        }
+      }
+    },
+
+
+    "/sponsors/cycle/{cycleId}": {
+      "get": {
+        "tags": ["Sponsors"],
+        "summary": "Get sponsors for a specific cycle",
+        "parameters": [{
+          "in": "path",
+          "name": "cycleId",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "List of active sponsors" }
+        }
+      }
+    },
+
+    "/sponsors/next-ad": {
+      "get": {
+        "tags": ["Sponsors"],
+        "summary": "Get the next sponsor ad to display",
+        "responses": {
+          "200": { "description": "Sponsor ad object" }
+        }
+      }
+    },
+
+    "/sponsors/track-impression": {
+      "post": {
+        "tags": ["Sponsors"],
+        "summary": "Track an ad impression or click",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "sponsorId": { "type": "string" },
+              "type": { "type": "string", "enum": ["impression", "click"] }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Tracked" }
+        }
+      }
+    },
+
+
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get all notifications for current user",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of notifications (last 50)" }
+        }
+      }
+    },
+
+    "/notifications/read-all": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark all notifications as read",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All marked as read" }
+        }
+      }
+    },
+
+    "/notifications/{id}/read": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark a single notification as read",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "description": "Notification ID"
+        }],
+        "responses": {
+          "200": { "description": "Marked as read" },
+          "404": { "description": "Notification not found" }
+        }
+      }
+    },
+
+
+    "/stans": {
+      "post": {
+        "tags": ["Stans"],
+        "summary": "Stan (subscribe to) a contestant",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["participantId"],
+            "properties": {
+              "participantId": { "type": "string" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "You are now stanning this contestant!" }
+        }
+      }
+    },
+
+    "/stans/me": {
+      "get": {
+        "tags": ["Stans"],
+        "summary": "Get contestants I am stanning",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of stanned contestants" }
+        }
+      }
+    },
+
+    "/stans/{participantId}": {
+      "delete": {
+        "tags": ["Stans"],
+        "summary": "Unstan a contestant",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "participantId",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Unstanned successfully" }
+        }
+      }
+    },
+
+    "/stans/participant/{participantId}": {
+      "get": {
+        "tags": ["Stans"],
+        "summary": "Get all stans (fans) for a participant",
+        "parameters": [{
+          "in": "path",
+          "name": "participantId",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "List of stans" }
+        }
+      }
+    },
+
+
+    "/admin/dashboard": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get admin dashboard overview",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Dashboard stats" },
+          "403": { "description": "Admin access required" }
+        }
+      }
+    },
+
+    "/admin/cycles": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List all competition cycles",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All cycles" }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Create a new competition cycle",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["cycleName", "cycleNumber", "registrationOpen", "registrationClose", "votingOpen", "votingClose", "revealAt", "registrationFee"],
+            "properties": {
+              "cycleName": { "type": "string", "example": "Season 2" },
+              "cycleNumber": { "type": "integer", "example": 2 },
+              "registrationOpen": { "type": "string", "format": "date-time" },
+              "registrationClose": { "type": "string", "format": "date-time" },
+              "votingOpen": { "type": "string", "format": "date-time" },
+              "votingClose": { "type": "string", "format": "date-time" },
+              "revealAt": { "type": "string", "format": "date-time" },
+              "registrationFee": { "type": "number", "example": 5000 }
+            }
+          }
+        }],
+        "responses": {
+          "201": { "description": "Cycle created" }
+        }
+      }
+    },
+
+    "/admin/cycles/{id}": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update a competition cycle",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Cycle updated" }
+        }
+      }
+    },
+
+    "/admin/cycles/{id}/status": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update cycle status (e.g. open voting)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "type": "string" },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["status"],
+              "properties": {
+                "status": { "type": "string", "enum": ["DRAFT", "REGISTRATION_OPEN", "REGISTRATION_CLOSED", "VOTING_OPEN", "COMPLETED", "CANCELLED"] }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Status updated" }
+        }
+      }
+    },
+
+    "/admin/settings/{cycleId}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get settings for a competition cycle",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "cycleId",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Cycle settings" }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update cycle settings",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "cycleId", "required": true, "type": "string" },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["settings"],
+              "properties": {
+                "settings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["key", "value"],
+                    "properties": {
+                      "key": { "type": "string", "example": "maxVotesPerDay" },
+                      "value": { "type": "string", "example": "5" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Settings updated" }
+        }
+      }
+    },
+
+    "/admin/settings/global": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get global platform settings",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Global settings" }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update global platform settings",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Settings updated" }
+        }
+      }
+    },
+
+    "/admin/participants": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List all participants (admin view)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "query", "name": "cycleId", "type": "string" },
+          { "in": "query", "name": "status", "type": "string" },
+          { "in": "query", "name": "page", "type": "integer" },
+          { "in": "query", "name": "limit", "type": "integer" }
+        ],
+        "responses": {
+          "200": { "description": "Paginated participants" }
+        }
+      }
+    },
+
+    "/admin/participants/{id}/status": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update participant status",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "type": "string" },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["status"],
+              "properties": {
+                "status": { "type": "string", "enum": ["PENDING", "ACTIVE", "ELIMINATED", "DISQUALIFIED"] }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Status updated" }
+        }
+      }
+    },
+
+    "/admin/participants/{id}": {
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Remove a participant",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Participant removed" }
+        }
+      }
+    },
+
+    "/admin/votes/live": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get live vote tallies",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "query",
+          "name": "cycleId",
+          "type": "string",
+          "required": true
+        }],
+        "responses": {
+          "200": { "description": "Live vote data" }
+        }
+      }
+    },
+
+    "/admin/votes/stats": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get vote statistics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Vote stats" }
+        }
+      }
+    },
+
+    "/admin/eliminations": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get elimination history",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "query",
+          "name": "cycleId",
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Elimination records" }
+        }
+      }
+    },
+
+    "/admin/eliminations/queue": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get elimination queue (lowest vote participants)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "query",
+          "name": "cycleId",
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Queue of candidates for elimination" }
+        }
+      }
+    },
+
+    "/admin/eliminations/run": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Trigger daily elimination",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Elimination executed" }
+        }
+      }
+    },
+
+    "/admin/fraud-flags": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get fraud detection flags",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of fraud flags" }
+        }
+      }
+    },
+
+    "/admin/fraud-flags/{id}/resolve": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Resolve a fraud flag",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "type": "string" },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["resolution"],
+              "properties": {
+                "resolution": { "type": "string", "example": "Dismissed — legitimate voter" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Flag resolved" }
+        }
+      }
+    },
+
+    "/admin/audit-log": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get admin audit log",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "query", "name": "page", "type": "integer" },
+          { "in": "query", "name": "limit", "type": "integer" },
+          { "in": "query", "name": "action", "type": "string" }
+        ],
+        "responses": {
+          "200": { "description": "Paginated audit log entries" }
+        }
+      }
+    },
+
+    "/admin/sponsors": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List sponsors",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "query",
+          "name": "cycleId",
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "List of sponsors" }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Create a new sponsor",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "companyName": { "type": "string", "example": "MTN Nigeria" },
+              "cycleId": { "type": "string" },
+              "logoUrl": { "type": "string" },
+              "bannerImageUrl": { "type": "string" },
+              "prizeDescription": { "type": "string", "example": "Win 1GB data daily!" },
+              "displayOrder": { "type": "integer", "example": 1 },
+              "isActive": { "type": "boolean", "example": true }
+            }
+          }
+        }],
+        "responses": {
+          "201": { "description": "Sponsor created" }
+        }
+      }
+    },
+
+    "/admin/sponsors/{id}": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update a sponsor",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "type": "string" },
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "companyName": { "type": "string" },
+                "logoUrl": { "type": "string" },
+                "bannerImageUrl": { "type": "string" },
+                "prizeDescription": { "type": "string" },
+                "displayOrder": { "type": "integer" },
+                "isActive": { "type": "boolean" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Sponsor updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Delete a sponsor",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Sponsor deleted" }
+        }
+      }
+    },
+
+
+    "/auth/change-email": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Change email address",
+        "description": "Updates the authenticated user's email. Resets email verification status.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["newEmail"],
+            "properties": {
+              "newEmail": { "type": "string", "format": "email", "example": "newemail@example.com" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Email updated. Verification email sent." },
+          "409": { "description": "Email already in use" }
+        }
+      }
+    },
+
+
+    "/users/me/password": {
+      "put": {
+        "tags": ["Users"],
+        "summary": "Change password",
+        "description": "Change the authenticated user's password. Requires current password.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["currentPassword", "newPassword"],
+            "properties": {
+              "currentPassword": { "type": "string", "example": "OldPass@123" },
+              "newPassword": { "type": "string", "example": "NewPass@456", "minLength": 8 }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Password changed" },
+          "400": { "description": "Current password incorrect" }
+        }
+      }
+    },
+
+    "/users/me/phone": {
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update phone number",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["phone"],
+            "properties": {
+              "phone": { "type": "string", "example": "+2349012345678" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Phone updated" },
+          "409": { "description": "Phone already in use" }
+        }
+      }
+    },
+
+    "/users/me/activity": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user's activity history",
+        "description": "Returns votes cast, stanned contestants, and recent notifications.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Activity summary" }
+        }
+      }
+    },
+
+
+    "/competitions/all": {
+      "get": {
+        "tags": ["Competitions"],
+        "summary": "List all competition cycles (public archive)",
+        "description": "Returns all past and present cycles with participant/vote counts.",
+        "responses": {
+          "200": { "description": "List of all cycles" }
+        }
+      }
+    },
+
+    "/competitions/{id}/winners": {
+      "get": {
+        "tags": ["Competitions"],
+        "summary": "Get winners of a competition",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Winners list with rankings" },
+          "404": { "description": "Cycle not found" }
+        }
+      }
+    },
+
+
+    "/participants/search": {
+      "get": {
+        "tags": ["Participants"],
+        "summary": "Search participants",
+        "description": "Search by name, state, category with pagination.",
+        "parameters": [
+          { "in": "query", "name": "q", "type": "string", "description": "Search query (name, city, state)" },
+          { "in": "query", "name": "category", "type": "string" },
+          { "in": "query", "name": "state", "type": "string" },
+          { "in": "query", "name": "cycleId", "type": "string" },
+          { "in": "query", "name": "page", "type": "integer", "default": 1 },
+          { "in": "query", "name": "limit", "type": "integer", "default": 20 }
+        ],
+        "responses": {
+          "200": { "description": "Paginated search results" }
+        }
+      }
+    },
+
+    "/participants/{slug}/votes": {
+      "get": {
+        "tags": ["Participants"],
+        "summary": "Get participant's public vote info",
+        "description": "Returns total votes and daily trend for the last 14 days.",
+        "parameters": [{
+          "in": "path",
+          "name": "slug",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Vote info with daily trend" },
+          "404": { "description": "Participant not found" }
+        }
+      }
+    },
+
+    "/participants/{slug}/stans": {
+      "get": {
+        "tags": ["Participants"],
+        "summary": "Get participant's stan/fan count",
+        "parameters": [{
+          "in": "path",
+          "name": "slug",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Stan count and recent stans" },
+          "404": { "description": "Participant not found" }
+        }
+      }
+    },
+
+
+    "/votes/my-history": {
+      "get": {
+        "tags": ["Voting"],
+        "summary": "Get my voting history",
+        "description": "Returns the authenticated user's complete voting history with participant and cycle details.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "query", "name": "page", "type": "integer", "default": 1 },
+          { "in": "query", "name": "limit", "type": "integer", "default": 20 }
+        ],
+        "responses": {
+          "200": { "description": "Paginated vote history" }
+        }
+      }
+    },
+
+    "/votes/stats": {
+      "get": {
+        "tags": ["Voting"],
+        "summary": "Get public vote statistics",
+        "description": "Total votes, votes today, active participants, unique voters for current cycle.",
+        "responses": {
+          "200": { "description": "Public vote stats" }
+        }
+      }
+    },
+
+    "/votes/recent": {
+      "get": {
+        "tags": ["Voting"],
+        "summary": "Get recent votes feed",
+        "description": "Anonymized feed showing recent votes (e.g. 'Someone voted for DJ Starboy').",
+        "parameters": [
+          { "in": "query", "name": "limit", "type": "integer", "default": 15 }
+        ],
+        "responses": {
+          "200": { "description": "Recent votes feed" }
+        }
+      }
+    },
+
+
+    "/leaderboard": {
+      "get": {
+        "tags": ["Leaderboard"],
+        "summary": "Get current cycle leaderboard",
+        "description": "Ranked list of participants by total votes for the active competition cycle.",
+        "parameters": [
+          { "in": "query", "name": "page", "type": "integer", "default": 1 },
+          { "in": "query", "name": "limit", "type": "integer", "default": 50 }
+        ],
+        "responses": {
+          "200": { "description": "Leaderboard with rankings and cycle info" }
+        }
+      }
+    },
+
+    "/leaderboard/daily": {
+      "get": {
+        "tags": ["Leaderboard"],
+        "summary": "Get today's vote rankings",
+        "description": "Ranked by votes received today (for VOTING_OPEN cycles only).",
+        "responses": {
+          "200": { "description": "Today's rankings" }
+        }
+      }
+    },
+
+    "/leaderboard/{cycleId}": {
+      "get": {
+        "tags": ["Leaderboard"],
+        "summary": "Get leaderboard for a specific cycle",
+        "parameters": [{
+          "in": "path",
+          "name": "cycleId",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Cycle leaderboard" },
+          "404": { "description": "Cycle not found" }
+        }
+      }
+    },
+
+
+    "/eliminations/{id}": {
+      "get": {
+        "tags": ["Eliminations"],
+        "summary": "Get elimination details by ID",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Elimination details with participant and cycle info" },
+          "404": { "description": "Elimination not found" }
+        }
+      }
+    },
+
+
+    "/notifications/unread-count": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get unread notification count",
+        "description": "Returns the count of unread notifications for badge display.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Unread count" }
+        }
+      }
+    },
+
+    "/notifications/{id}": {
+      "delete": {
+        "tags": ["Notifications"],
+        "summary": "Delete a notification",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Notification deleted" },
+          "404": { "description": "Notification not found" }
+        }
+      }
+    },
+
+
+    "/stans/check/{participantId}": {
+      "get": {
+        "tags": ["Stans"],
+        "summary": "Check if you are stanning a participant",
+        "description": "Returns whether the authenticated user is currently stanning the given participant. Used for UI toggle state.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "participantId",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "{ isStanning: true/false }" }
+        }
+      }
+    },
+
+
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List all users",
+        "description": "Paginated, searchable by name/email/phone/role.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "query", "name": "page", "type": "integer", "default": 1 },
+          { "in": "query", "name": "limit", "type": "integer", "default": 50 },
+          { "in": "query", "name": "search", "type": "string", "description": "Search by name, email, or phone" },
+          { "in": "query", "name": "role", "type": "string", "enum": ["VOTER", "PARTICIPANT", "ADMIN", "SUPER_ADMIN"] }
+        ],
+        "responses": {
+          "200": { "description": "Paginated user list" }
+        }
+      }
+    },
+
+    "/admin/users/{id}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get user details",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "Full user profile with activity" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+
+    "/admin/users/{id}/role": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Change user role",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "type": "string" },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["role"],
+              "properties": {
+                "role": { "type": "string", "enum": ["VOTER", "PARTICIPANT", "ADMIN", "SUPER_ADMIN"] }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Role updated" }
+        }
+      }
+    },
+
+    "/admin/users/{id}/ban": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Ban a user",
+        "description": "Deactivates the user account.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "User banned" }
+        }
+      }
+    },
+
+    "/admin/users/{id}/unban": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Unban (reactivate) a user",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string"
+        }],
+        "responses": {
+          "200": { "description": "User reactivated" }
+        }
+      }
+    },
+
+    "/admin/stats/overview": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get platform-wide statistics",
+        "description": "Total users, votes, cycles, sponsors, fraud flags, and new users this month.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Platform stats overview" }
+        }
+      }
+    },
+
+    "/admin/stats/votes-over-time": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get vote trend data for charts",
+        "description": "Daily vote totals for building trend charts.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "query", "name": "days", "type": "integer", "default": 14, "description": "Number of days to look back" },
+          { "in": "query", "name": "cycleId", "type": "string", "description": "Filter by cycle" }
+        ],
+        "responses": {
+          "200": { "description": "Array of { date, totalVotes }" }
+        }
+      }
+    },
+
+    "/admin/notifications/broadcast": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Broadcast notification to all users",
+        "description": "Sends a notification to all active users, optionally filtered by role.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["title", "body"],
+            "properties": {
+              "title": { "type": "string", "example": "New Season Starting!" },
+              "body": { "type": "string", "example": "Season 2 registration is now open. Join the competition!" },
+              "type": { "type": "string", "enum": ["SYSTEM", "CYCLE_STARTING", "CYCLE_ENDING"], "default": "SYSTEM" },
+              "targetRole": { "type": "string", "enum": ["VOTER", "PARTICIPANT", "ADMIN"], "description": "Optional: only send to users with this role" },
+              "cycleId": { "type": "string", "description": "Optional: link notification to a cycle" }
+            }
+          }
+        }],
+        "responses": {
+          "200": { "description": "Broadcast sent with recipient count" }
+        }
+      }
+    }
+
+  }
+}
