@@ -13,7 +13,7 @@ export default function WelcomeScreen() {
   return (
     <View style={s.container}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Hero Section */}
       <View style={s.hero}>
         <View style={s.logoCircle}>
@@ -26,26 +26,26 @@ export default function WelcomeScreen() {
       {/* Content Area */}
       <View style={s.footer}>
         <Text style={s.welcomeText}>Focused on Fame and Content Creation. Empowering voices through secure voting.</Text>
-        
+
         <View style={s.btnGroup}>
-          <TouchableOpacity 
-            style={s.primaryBtn} 
+          <TouchableOpacity
+            style={s.primaryBtn}
             onPress={() => router.push('/(auth)/register')}
           >
             <Text style={s.primaryBtnText}>Get Started</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={s.secondaryBtn} 
+          <TouchableOpacity
+            style={s.secondaryBtn}
             onPress={() => router.push('/(auth)/login')}
           >
             <Text style={s.secondaryBtnText}>Sign In to Account</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-          style={s.guestBtn} 
+        <TouchableOpacity
+          style={s.guestBtn}
           onPress={() => router.replace('/(tabs)/')}
         >
           <Text style={s.guestBtnText}>Continue as guest (voting only)</Text>
@@ -61,7 +61,7 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.primaryColor },
     hero: {
-      flex: 1.2,
+      flex: 0.7,
       justifyContent: 'center',
       alignItems: 'center',
       padding: 24,

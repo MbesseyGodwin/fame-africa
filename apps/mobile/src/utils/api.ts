@@ -177,6 +177,14 @@ export const streamingApi = {
     api.post(`/streaming/${streamId}/end`),
   listLive: (cycleId?: string) => 
     api.get('/streaming/live', { params: { cycleId } }),
+  listRecorded: (params?: { cycleId?: string, search?: string, category?: string, sortBy?: string, page?: number, limit?: number }) => 
+    api.get('/streaming/recorded', { params }),
+  getMyHistory: () => 
+    api.get('/streaming/my-history'),
+  getRecordingLink: (streamId: string) => 
+    api.get(`/streaming/${streamId}/link`),
+  deleteStream: (streamId: string) => 
+    api.delete(`/streaming/${streamId}`),
   reportStream: (streamId: string, reason: string) => 
     api.post('/moderation/reports', { targetStreamId: streamId, reason }),
 }

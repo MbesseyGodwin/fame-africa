@@ -74,6 +74,9 @@ export default function RegisterPage() {
   const router = useRouter()
 
   const [activeStep, setActiveStep] = useState(0) // UI Wizard Step
+  const [formData, setFormData] = useState({
+    fullName: '', email: '', phone: '', password: '',
+    displayName: '', bio: '',
     state: '', city: '', category: '',
     nationality: '',
     instagramUrl: '', twitterUrl: '', tiktokUrl: '', youtubeUrl: ''

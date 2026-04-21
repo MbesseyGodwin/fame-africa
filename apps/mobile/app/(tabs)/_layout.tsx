@@ -55,6 +55,7 @@ export default function TabsLayout() {
         name="notifications"
         options={{
           href: null,
+          headerShown: false,
         }}
       />
       <Tabs.Screen

@@ -1,15 +1,38 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
 dist/
-.next/
-.expo/
-*.env
-.env.local
-.env.production
-.DS_Store
-*.log
-coverage/
-.nyc_output/
-prisma/migrations/dev/
-*.tsbuildinfo
 build/
-.turbo/
+.next/
+out/
+*.log
+
+# Environment variables (EXTREMELY IMPORTANT)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Expo / Mobile artifacts
+.expo/
+*.jks
+*.p12
+*.key
+*.mobileprovision
+android/build/
+ios/build/
+
+# IDE / System files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Prisma
+/packages/database/src/generated

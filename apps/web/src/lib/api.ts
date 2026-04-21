@@ -10,6 +10,19 @@ export const api = axios.create({
   withCredentials: false,
 })
 
+// Track refresh state
+let isRefreshing = false
+let refreshSubscribers: ((token: string) => void)[] = []
+
+const onRefreshed = (token: string) => {
+  refreshSubscribers.map((callback) => callback(token))
+  refreshSubscribers = []
+}
+
+const addRefreshSubscriber = (callback: (token: string) => void) => {
+  refreshSubscribers.push(callback)
+}
+
 // Attach JWT from localStorage
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
@@ -23,19 +36,50 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const original = error.config
-    if (error.response?.status === 401 && !original._retry) {
+    const { config, response } = error
+    const original = config
+
+    if (response?.status === 401 && !original._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          addRefreshSubscriber((token: string) => {
+            original.headers.Authorization = `Bearer ${token}`
+            resolve(api(original))
+          })
+        })
+      }
+
       original._retry = true
+      isRefreshing = true
+
       try {
         const refreshToken = localStorage.getItem('refreshToken')
+        if (!refreshToken) throw new Error('No refresh token')
+
         const { data } = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken })
-        localStorage.setItem('accessToken', data.data.accessToken)
-        original.headers.Authorization = `Bearer ${data.data.accessToken}`
+        const newAccessToken = data.data.accessToken
+        localStorage.setItem('accessToken', newAccessToken)
+        
+        isRefreshing = false
+        onRefreshed(newAccessToken)
+
+        original.headers.Authorization = `Bearer ${newAccessToken}`
         return api(original)
-      } catch {
+      } catch (refreshError) {
+        isRefreshing = false
+        refreshSubscribers = []
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
-        if (typeof window !== 'undefined') window.location.href = '/auth/login'
+        
+        if (typeof window !== 'undefined') {
+          const path = window.location.pathname
+          const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/admin')
+          
+          if (isProtectedRoute && path !== '/auth/login') {
+            window.location.href = '/auth/login'
+          }
+        }
+        return Promise.reject(refreshError)
       }
     }
     return Promise.reject(error)

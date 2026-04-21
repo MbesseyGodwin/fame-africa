@@ -94,5 +94,119 @@ export const streamingController = {
       console.error('Agora Webhook Error:', error.message)
       return res.status(200).json({ success: true, message: 'Acknowledged but failed' })
     }
+  },
+
+  /**
+   * Gets history for the current authenticated participant.
+   */
+  async getMyHistory(req: Request, res: Response) {
+    try {
+      const user = (req as any).user
+      const participant = await streamingService.getParticipantByUserId(user.id)
+      if (!participant) {
+        return res.status(404).json({ success: false, message: 'Participant profile not found' })
+      }
+      
+      const history = await streamingService.getParticipantHistory(participant.id)
+      return res.json({ success: true, data: history })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  },
+
+  /**
+   * Gets public history for any participant.
+   */
+  async getParticipantHistory(req: Request, res: Response) {
+    try {
+      const { participantId } = req.params
+      const history = await streamingService.getParticipantHistory(participantId)
+      return res.json({ success: true, data: history })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  },
+
+  /**
+   * Lists all past recorded streams for the public feed.
+   */
+  async listRecorded(req: Request, res: Response) {
+    try {
+      const { cycleId, search, category, sortBy, page, limit } = req.query as any
+      const streams = await streamingService.getGlobalHistory({
+        cycleId,
+        search,
+        category,
+        sortBy,
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20
+      })
+      
+      return res.json({
+        success: true,
+        data: streams
+      })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  },
+
+  /**
+   * Generates a temporary link for video playback from Dropbox.
+   */
+  async getRecordingLink(req: Request, res: Response) {
+    try {
+      const { streamId } = req.params
+      const stream = await streamingService.getStreamById(streamId)
+      
+      if (!stream) {
+        return res.status(404).json({ success: false, message: 'Stream record not found' })
+      }
+
+      if (!stream.dropboxPath) {
+        return res.status(202).json({ 
+          success: false, 
+          status: 'PROCESSING',
+          message: 'Recording is still being processed. Please check back in a few minutes.' 
+        })
+      }
+
+      const { getTemporaryLink } = await import('../../utils/dropboxUploader')
+      const temporaryLink = await getTemporaryLink(stream.dropboxPath)
+      
+      return res.json({
+        success: true,
+        data: { url: temporaryLink }
+      })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  },
+
+  /**
+   * Deletes a stream (Participant only).
+   */
+  async deleteStream(req: Request, res: Response) {
+    try {
+      const { streamId } = req.params
+      const user = (req as any).user
+      const participant = await streamingService.getParticipantByUserId(user.id)
+      
+      if (!participant) {
+        return res.status(404).json({ success: false, message: 'Participant profile not found' })
+      }
+
+      await streamingService.deleteStream(streamId, participant.id)
+      
+      return res.json({
+        success: true,
+        message: 'Stream deleted successfully'
+      })
+    } catch (error: any) {
+      return res.status(error.message === 'Unauthorized to delete this stream' ? 403 : 400).json({ 
+        success: false, 
+        message: error.message 
+      })
+    }
   }
 }

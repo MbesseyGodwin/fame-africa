@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "6983985c-3fe1-4ad7-9224-b818f9d0b9af"
+      }
+    },
+    "android": {
+      "package": "com.nigerianprogrammer.fameafrica"
+    }
+  }
+}

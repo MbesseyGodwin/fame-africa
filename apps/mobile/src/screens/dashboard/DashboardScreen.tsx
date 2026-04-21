@@ -237,25 +237,6 @@ export default function DashboardScreen() {
             <TouchableOpacity onPress={() => router.back()} style={s.navPill} activeOpacity={0.8}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
-
-            <View style={s.brandPill}>
-              <Text style={s.brandPillText}>FAME AFRICA</Text>
-            </View>
-
-            <ActionButton
-              icon="videocam"
-              label="Go Live"
-              color="#FE2C55"
-              onPress={() => router.push('/streaming/host')}
-            />
-
-            <TouchableOpacity
-              onPress={() => router.push('/participants/edit-profile')}
-              style={s.navPill}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="create-outline" size={20} color="#fff" />
-            </TouchableOpacity>
           </View>
 
           {/* ── Profile info pinned to bottom of hero ── */}
@@ -310,6 +291,34 @@ export default function DashboardScreen() {
               <Text style={s.bioCtaText}>Add a bio to attract more voters</Text>
             </TouchableOpacity>
           )}
+
+
+          {/* ── Top nav: back  |  brand  |  edit ── */}
+          <View style={[s.heroNavSection,]}>
+            <ActionButton
+              icon="videocam"
+              label="Go Live (Stream)"
+              color="#FE2C55"
+              onPress={() => router.push('/streaming/host')}
+            />
+
+            <ActionButton
+              icon="time"
+              label="Stream History"
+              color="rgba(0,0,0,0.5)"
+              onPress={() => router.push('/streaming/history')}
+            />
+
+
+
+            <TouchableOpacity
+              onPress={() => router.push('/participants/edit-profile')}
+              style={s.navPill}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="create-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
           {/* ── Live Arena Banner ──────────────────────── */}
           {liveArena && (
@@ -565,8 +574,11 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
   },
+  heroNavSection: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
   navPill: {
-    width: 42, height: 42, borderRadius: 21,
+    width: 42, height: 38, borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.32)',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
@@ -603,7 +615,7 @@ const s = StyleSheet.create({
 
   // Body
   body: { paddingHorizontal: 16, paddingTop: 20 },
-  bio: { fontSize: 14, color: C.inkMid, lineHeight: 21, marginBottom: 20 },
+  bio: { fontSize: 14, color: C.inkMid, lineHeight: 21, marginBottom: 16 },
   bioCta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
   bioCtaText: { color: C.accent, fontSize: 14, fontWeight: '600' },
 

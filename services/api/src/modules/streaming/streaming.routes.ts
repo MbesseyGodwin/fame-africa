@@ -61,3 +61,45 @@ streamingRouter.get('/live',
 streamingRouter.post('/webhook/agora',
   streamingController.handleAgoraWebhook
 )
+
+/**
+ * GET /api/v1/streaming/my-history
+ * Gets streaming history for the logged-in contestant.
+ */
+streamingRouter.get('/my-history',
+  authenticate,
+  streamingController.getMyHistory
+)
+
+/**
+ * GET /api/v1/streaming/participant/:participantId/history
+ * Gets public stream history for a specific participant.
+ */
+streamingRouter.get('/participant/:participantId/history',
+  streamingController.getParticipantHistory
+)
+
+/**
+ * GET /api/v1/streaming/recorded
+ * Public feed of all past recorded streams.
+ */
+streamingRouter.get('/recorded',
+  streamingController.listRecorded
+)
+
+/**
+ * GET /api/v1/streaming/:streamId/link
+ * Gets a temporary Dropbox playback link for a recording.
+ */
+streamingRouter.get('/:streamId/link',
+  streamingController.getRecordingLink
+)
+
+/**
+ * DELETE /api/v1/streaming/:streamId
+ * Deletes a specific stream session (Owner only).
+ */
+streamingRouter.delete('/:streamId',
+  authenticate,
+  streamingController.deleteStream
+)

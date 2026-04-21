@@ -152,7 +152,8 @@ export const streamingService = {
 
       // 2. Upload to Dropbox
       const { uploadToDropbox } = await import('../../utils/dropboxUploader')
-      const dropboxPath = `/fame-africa/recordings/${streamId}.mp4`
+      const dateStr = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      const dropboxPath = `/fame-africa/recordings/${dateStr}/${streamId}.mp4`
       
       await uploadToDropbox(fileBuffer, dropboxPath)
 
@@ -209,6 +210,100 @@ export const streamingService = {
         userId,
         content
       }
+    })
+  },
+
+  /**
+   * Gets the streaming history for a specific participant.
+   */
+  async getParticipantHistory(participantId: string) {
+    return await prisma.liveStream.findMany({
+      where: { hostId: participantId },
+      include: {
+        host: {
+          select: {
+            displayName: true,
+            photoUrl: true,
+            category: true
+          }
+        }
+      },
+      orderBy: { startTime: 'desc' }
+    })
+  },
+
+  /**
+   * Gets global streaming history with advanced filtering, sorting, and pagination.
+   */
+  async getGlobalHistory(params: {
+    cycleId?: string,
+    search?: string,
+    category?: string,
+    sortBy?: 'RECENT' | 'POPULAR',
+    page?: number,
+    limit?: number
+  }) {
+    const { cycleId, search, category, sortBy = 'RECENT', page = 1, limit = 20 } = params
+    const skip = (page - 1) * limit
+
+    return await prisma.liveStream.findMany({
+      where: {
+        status: { in: ['ENDED', 'RECORDED'] },
+        ...(cycleId ? { cycleId } : {}),
+        ...(category ? { host: { category } } : {}),
+        ...(search ? { 
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { host: { displayName: { contains: search, mode: 'insensitive' } } }
+          ]
+        } : {})
+      },
+      include: {
+        host: {
+          select: {
+            displayName: true,
+            photoUrl: true,
+            category: true
+          }
+        }
+      },
+      orderBy: sortBy === 'POPULAR' ? { peakViewers: 'desc' } : { endTime: 'desc' },
+      skip,
+      take: limit
+    })
+  },
+
+  /**
+   * Helper to find a participant record by user ID
+   */
+  async getParticipantByUserId(userId: string) {
+    return await prisma.participant.findUnique({
+      where: { userId }
+    })
+  },
+
+  /**
+   * Helper to find a specific stream by ID
+   */
+  async getStreamById(streamId: string) {
+    return await prisma.liveStream.findUnique({
+      where: { id: streamId }
+    })
+  },
+
+  /**
+   * Deletes a stream record.
+   */
+  async deleteStream(streamId: string, participantId: string) {
+    const stream = await prisma.liveStream.findUnique({
+      where: { id: streamId }
+    })
+
+    if (!stream) throw new Error('Stream not found')
+    if (stream.hostId !== participantId) throw new Error('Unauthorized to delete this stream')
+
+    return await prisma.liveStream.delete({
+      where: { id: streamId }
     })
   }
 }

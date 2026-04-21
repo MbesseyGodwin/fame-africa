@@ -7,7 +7,8 @@ import { logger } from '../../utils/logger'
 let expoInstance: any = null
 async function getExpo() {
   if (!expoInstance) {
-    const { Expo } = await import('expo-server-sdk')
+    // Workaround for importing ESM-only expo-server-sdk in a CJS project
+    const { Expo } = await (eval('import("expo-server-sdk")') as Promise<any>)
     expoInstance = new Expo()
   }
   return expoInstance
@@ -43,7 +44,7 @@ export const notificationService = {
       select: { pushToken: true },
     })
 
-    const { Expo } = await import('expo-server-sdk')
+    const { Expo } = await (eval('import("expo-server-sdk")') as Promise<any>)
     if (!user?.pushToken || !Expo.isExpoPushToken(user.pushToken)) {
       logger.info(`Push token for user ${userId} is missing or invalid. skipping push.`)
       return notification
@@ -97,7 +98,7 @@ export const notificationService = {
    * Updates a user's push token.
    */
   async updatePushToken(userId: string, pushToken: string) {
-    const { Expo } = await import('expo-server-sdk')
+    const { Expo } = await (eval('import("expo-server-sdk")') as Promise<any>)
     if (!Expo.isExpoPushToken(pushToken)) {
       throw new Error('Invalid Expo push token')
     }

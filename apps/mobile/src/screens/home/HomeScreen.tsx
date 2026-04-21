@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../context/AuthContext'
 import { streamingApi } from '../../utils/api'
 import LiveStreamCard from '../../components/LiveStreamCard'
+import ReplayCard from '../../components/ReplayCard'
 
 const { width } = Dimensions.get('window')
 
@@ -41,6 +42,11 @@ export default function HomeScreen() {
     queryKey: ['liveStreams'],
     queryFn: () => streamingApi.listLive(),
     refetchInterval: 30000, // Poll every 30s
+  })
+
+  const { data: recordedRes } = useQuery({
+    queryKey: ['recordedStreams'],
+    queryFn: () => streamingApi.listRecorded(undefined, 10),
   })
 
   // const cycle = cycleRes?.data?.data
@@ -87,6 +93,13 @@ export default function HomeScreen() {
         <View style={s.headerActions}>
           <TouchableOpacity
             style={s.topBtn}
+            onPress={() => router.push('/streaming/replays')}
+          >
+            <Ionicons name="play-circle-outline" size={22} color={textPrimary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={s.topBtn}
             onPress={() => updateTheme({ darkMode: !theme.darkMode })}
           >
             <Ionicons name={theme.darkMode ? "sunny-outline" : "moon-outline"} size={22} color={textPrimary} />
@@ -118,6 +131,26 @@ export default function HomeScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={width * 0.4 + 12}>
               {liveRes.data.data.map((stream: any) => (
                 <LiveStreamCard key={stream.id} stream={stream} />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Replays Carousel */}
+        {recordedRes?.data?.data?.length > 0 && (
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="play-circle" size={16} color={theme.primaryColor} />
+                <Text style={s.sectionTitle}>REPLAYS</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/streaming/replays')}>
+                <Text style={{ color: theme.primaryColor, fontSize: 12, fontWeight: '700' }}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={width * 0.42 + 12}>
+              {recordedRes.data.data.map((stream: any) => (
+                <ReplayCard key={stream.id} stream={stream} />
               ))}
             </ScrollView>
           </View>
@@ -211,9 +244,9 @@ export default function HomeScreen() {
         </View>
 
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/about/faq' as any)}>
-            <Ionicons name="help-circle-outline" size={24} color="#15803D" />
-            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Help & FAQ</Text>
+          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/streaming/replays')}>
+            <Ionicons name="videocam-outline" size={24} color="#FE2C55" />
+            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Watch Replays</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/about')}>
             <Ionicons name="shield-checkmark-outline" size={24} color="#0369A1" />

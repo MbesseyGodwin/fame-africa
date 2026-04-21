@@ -61,7 +61,14 @@ export const useAuthStore = create<AuthState>()(
           localStorage.removeItem('accessToken')
           localStorage.removeItem('refreshToken')
           set({ user: null, accessToken: null })
-          window.location.href = '/auth/login'
+          
+          if (typeof window !== 'undefined') {
+            const path = window.location.pathname
+            const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/admin')
+            if (isProtectedRoute) {
+              window.location.href = '/auth/login'
+            }
+          }
         }
       },
 

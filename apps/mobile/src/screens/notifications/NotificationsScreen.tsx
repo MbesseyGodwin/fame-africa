@@ -1,18 +1,23 @@
 // apps/mobile/src/screens/notifications/NotificationsScreen.tsx
 
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native'
+import React, { useState } from 'react'
+import { 
+  View, Text, StyleSheet, FlatList, TouchableOpacity, 
+  ActivityIndicator, RefreshControl, StatusBar
+} from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { notificationsApi } from '../../utils/api'
 import { useTheme } from '../../context/ThemeContext'
 import { Ionicons } from '@expo/vector-icons'
-import React from 'react'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function NotificationsScreen() {
-  const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
+  const { theme, bg, surface, textPrimary, textSecondary, border } = useTheme()
   const queryClient = useQueryClient()
   const router = useRouter()
-  const [refreshing, setRefreshing] = React.useState(false)
+  const insets = useSafeAreaInsets()
+  const [refreshing, setRefreshing] = useState(false)
 
   const { data: nRes, isLoading, refetch } = useQuery({
     queryKey: ['notifications'],
@@ -36,16 +41,26 @@ export default function NotificationsScreen() {
   })
 
   const notifications = nRes?.data?.data || []
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, insets)
 
   function renderNotification({ item }: { item: any }) {
-    const isSuccess = item.type === 'SUCCESS'
-    const isSystem = item.type === 'SYSTEM'
-    const isUrgent = item.type === 'URGENT'
+    const isSuccess = item.type === 'SUCCESS' || item.type === 'PAYMENT_CONFIRMED'
+    const isUrgent = item.type === 'URGENT' || item.type === 'ELIMINATION_WARNING'
+    const isVote = item.type === 'VOTE_RECEIVED'
 
     let statusColor = theme.primaryColor
-    if (isSuccess) statusColor = '#4CAF50'
-    if (isUrgent) statusColor = '#F44336'
+    let iconName: any = 'notifications'
+
+    if (isSuccess) {
+      statusColor = '#10B981' // Success Green
+      iconName = 'checkmark-circle'
+    } else if (isUrgent) {
+      statusColor = '#EF4444' // Error Red
+      iconName = 'alert-circle'
+    } else if (isVote) {
+      statusColor = '#8B5CF6' // Purple
+      iconName = 'heart'
+    }
 
     return (
       <TouchableOpacity
@@ -53,20 +68,16 @@ export default function NotificationsScreen() {
         onPress={() => !item.readAt && markReadMutation.mutate(item.id)}
         activeOpacity={0.7}
       >
-        <View style={[s.statusIndicator, { backgroundColor: statusColor }]} />
         <View style={[s.iconBox, { backgroundColor: statusColor + '15' }]}>
-          <Ionicons
-            name={isSuccess ? 'checkmark-circle' : isUrgent ? 'alert-circle' : 'notifications'}
-            size={22}
-            color={statusColor}
-          />
+          <Ionicons name={iconName} size={22} color={statusColor} />
         </View>
-        <View style={{ flex: 1, marginLeft: 16 }}>
+        
+        <View style={s.cardBody}>
           <View style={s.cardHeader}>
             <Text style={[s.title, !item.readAt && s.unreadTitle]}>{item.title}</Text>
-            {!item.readAt && <View style={s.unreadDot} />}
+            {!item.readAt && <View style={s.unreadIndicator} />}
           </View>
-          <Text style={s.body} numberOfLines={3}>{item.message}</Text>
+          <Text style={s.body} numberOfLines={3}>{item.body || item.message}</Text>
           <View style={s.cardFooter}>
             <Ionicons name="time-outline" size={12} color={textSecondary} />
             <Text style={s.time}>
@@ -74,46 +85,57 @@ export default function NotificationsScreen() {
             </Text>
           </View>
         </View>
+        
+        {!item.readAt && <View style={[s.sideLine, { backgroundColor: statusColor }]} />}
       </TouchableOpacity>
     )
   }
 
   return (
     <View style={s.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Premium Header */}
       <View style={s.header}>
-        <View style={s.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={textPrimary} />
+        <View style={s.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backCircle}>
+            <Ionicons name="chevron-back" size={24} color={textPrimary} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Notifications</Text>
+          <View style={{ width: 44 }} />
         </View>
+        
         {notifications.length > 0 && (
-          <TouchableOpacity onPress={() => markAllReadMutation.mutate()}>
+          <TouchableOpacity 
+            onPress={() => markAllReadMutation.mutate()}
+            style={s.markAllBtn}
+          >
             <Text style={s.markAllText}>Mark all as read</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.primaryColor} />
+        <View style={s.center}>
+          <ActivityIndicator color={theme.primaryColor} size="large" />
         </View>
       ) : (
         <FlatList
           data={notifications}
           keyExtractor={(item) => item.id}
           renderItem={renderNotification}
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primaryColor} />
           }
           ListEmptyComponent={
             <View style={s.emptyState}>
               <View style={s.emptyIconCircle}>
-                <Ionicons name="notifications-outline" size={40} color={theme.primaryColor} />
+                <Ionicons name="notifications-off-outline" size={48} color={theme.primaryColor} />
               </View>
-              <Text style={s.emptyTitle}>All caught up!</Text>
-              <Text style={s.emptySub}>You don't have any new alerts. When you do, they'll appear here.</Text>
+              <Text style={s.emptyTitle}>Quiet in here...</Text>
+              <Text style={s.emptySub}>You're all caught up! New alerts about votes and events will show up here.</Text>
             </View>
           }
         />
@@ -122,40 +144,159 @@ export default function NotificationsScreen() {
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, insets: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: bg },
+    container: { flex: 1, backgroundColor: '#F9FAFB' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: {
-      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20,
-      backgroundColor: surface, borderBottomWidth: 1, borderBottomColor: border + '20',
+      backgroundColor: '#fff',
+      paddingTop: insets.top + 10,
+      paddingBottom: 16,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F3F4F6',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
     },
-    headerLeft: { flexDirection: 'row', alignItems: 'center' },
-    backBtn: { marginRight: 12, padding: 4 },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: textPrimary },
-    markAllText: { fontSize: 13, color: theme.primaryColor, fontWeight: '600' },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12
+    },
+    backCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: '#F3F4F6',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: textPrimary,
+      letterSpacing: -0.5
+    },
+    markAllBtn: {
+      alignSelf: 'flex-end',
+      paddingVertical: 4
+    },
+    markAllText: {
+      fontSize: 14,
+      color: theme.primaryColor,
+      fontWeight: '700',
+    },
+    
+    listContent: {
+      padding: 16,
+      paddingBottom: 40
+    },
     card: {
-      flexDirection: 'row', padding: 16, backgroundColor: surface,
-      borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: border + '10',
-      shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-      overflow: 'hidden', position: 'relative',
+      flexDirection: 'row',
+      padding: 16,
+      backgroundColor: '#ffffff',
+      borderRadius: 20,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      elevation: 4,
+      overflow: 'hidden',
+      position: 'relative',
     },
-    unreadCard: { backgroundColor: theme.accentColor + '15', borderColor: theme.primaryColor + '20' },
-    statusIndicator: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-    iconBox: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-    title: { fontSize: 15, fontWeight: '600', color: textPrimary, flex: 1 },
-    unreadTitle: { fontWeight: '800' },
-    body: { fontSize: 13, color: textSecondary, lineHeight: 19, marginBottom: 8 },
-    cardFooter: { flexDirection: 'row', alignItems: 'center' },
-    time: { fontSize: 11, color: textSecondary, marginLeft: 4, fontWeight: '500' },
-    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.primaryColor, marginLeft: 8 },
-    emptyState: { alignItems: 'center', marginTop: 120, paddingHorizontal: 40 },
+    unreadCard: {
+      backgroundColor: '#fff',
+      shadowOpacity: 0.1,
+      elevation: 6
+    },
+    sideLine: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 4,
+    },
+    iconBox: {
+      width: 50,
+      height: 50,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    cardBody: {
+      flex: 1,
+      marginLeft: 16
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 6
+    },
+    title: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#1F2937',
+      flex: 1
+    },
+    unreadTitle: {
+      fontWeight: '800',
+      color: '#111827'
+    },
+    unreadIndicator: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.primaryColor,
+      marginLeft: 8
+    },
+    body: {
+      fontSize: 14,
+      color: '#4B5563',
+      lineHeight: 20,
+      marginBottom: 10
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      alignItems: 'center'
+    },
+    time: {
+      fontSize: 12,
+      color: '#9CA3AF',
+      marginLeft: 4,
+      fontWeight: '500'
+    },
+
+    emptyState: {
+      alignItems: 'center',
+      marginTop: 100,
+      paddingHorizontal: 40
+    },
     emptyIconCircle: {
-      width: 80, height: 80, borderRadius: 40, backgroundColor: theme.accentColor,
-      alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: theme.accentColor + '20',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 24,
     },
-    emptyTitle: { fontSize: 20, fontWeight: '800', color: textPrimary },
-    emptySub: { fontSize: 14, color: textSecondary, textAlign: 'center', marginTop: 10, lineHeight: 22 },
+    emptyTitle: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: textPrimary,
+      marginBottom: 8
+    },
+    emptySub: {
+      fontSize: 15,
+      color: textSecondary,
+      textAlign: 'center',
+      lineHeight: 24
+    },
   })
 }
