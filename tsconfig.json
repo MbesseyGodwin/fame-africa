@@ -16,7 +16,8 @@
     "paths": {
       "@votenaija/database": ["./packages/database/src/index.ts"],
       "@votenaija/shared": ["./packages/shared/src/index.ts"]
-    }
+    },
+    "ignoreDeprecations": "6.0"
   },
   "exclude": ["node_modules", "dist", ".next", "*.js"]
 }
