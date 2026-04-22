@@ -4,9 +4,21 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "moduleResolution": "node",
+    "typeRoots": [
+      "./node_modules/@types",
+      "../../node_modules/@types"
+    ],
     "types": ["node"],
-    "lib": ["ES2020", "DOM"]
+    "lib": ["ES2020", "DOM"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "noEmitOnError": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "../../node_modules",
+    "dist",
+    "**/*.test.ts"
+  ]
 }
