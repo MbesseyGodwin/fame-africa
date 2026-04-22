@@ -9,6 +9,18 @@ set -e # Exit immediately if a command fails
 
 echo "🚀 Starting FameAfrica API Deployment Sequence..."
 
+# --- STAGE -1: DEPENDENCY VERIFICATION ---
+echo "--- STAGE -1: Dependency Verification ---"
+if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules)" ]; then
+    echo "⚠️ node_modules missing or empty! Running yarn install..."
+    yarn install --frozen-lockfile || {
+        echo "❌ yarn install failed. Trying without frozen lockfile..."
+        yarn install
+    }
+else
+    echo "✅ node_modules folder detected."
+fi
+
 # --- STAGE 0: ENVIRONMENT DIAGNOSTICS ---
 echo "--- STAGE 0: Environment Diagnostics ---"
 echo "Node version: $(node -v)"

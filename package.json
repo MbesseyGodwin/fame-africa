@@ -18,8 +18,7 @@
     "db:seed": "yarn workspace @votenaija/database seed",
     "db:studio": "yarn workspace @votenaija/database studio",
     "lint": "eslint . --ext .ts,.tsx",
-    "format": "prettier --write .",
-    "postinstall": "bash scripts/deploy-api.sh"
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.0.0",
