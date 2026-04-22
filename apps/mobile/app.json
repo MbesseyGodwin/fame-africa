@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FameAfrica",
-    "slug": "fameafrica-mobile",
+    "slug": "votenaija",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -17,7 +17,7 @@
       }
     },
     "android": {
-      "package": "com.nigerianprogrammer.fameafrica",
+      "package": "com.fameafrica.mobile",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",

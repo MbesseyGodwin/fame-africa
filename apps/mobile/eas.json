@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 12.0.0"
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -8,12 +9,10 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "channel": "preview"
+      "distribution": "internal"
     },
     "production": {
       "distribution": "internal",
-      "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://fameafrica-api.onrender.com/api/v1",
         "EXPO_PUBLIC_AGORA_APP_ID": "4e5cdfdfdf844827a80023bbc9c473bf"
