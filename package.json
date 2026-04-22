@@ -11,15 +11,15 @@
     "dev:api": "yarn workspace @votenaija/api dev",
     "dev:web": "yarn workspace @votenaija/web dev",
     "dev:mobile": "yarn workspace @votenaija/mobile start",
-    "build:api": "yarn workspace @votenaija/database generate && yarn workspace @votenaija/api build",
+    "build:api": "node ./node_modules/prisma/build/index.js generate --schema=packages/database/prisma/schema.prisma && yarn workspace @votenaija/api build",
     "build:web": "yarn workspace @votenaija/web build",
-    "db:generate": "yarn workspace @votenaija/database generate",
+    "db:generate": "node ./node_modules/prisma/build/index.js generate --schema=packages/database/prisma/schema.prisma",
     "db:migrate": "yarn workspace @votenaija/database migrate",
     "db:seed": "yarn workspace @votenaija/database seed",
     "db:studio": "yarn workspace @votenaija/database studio",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
-    "postinstall": "yarn workspace @votenaija/database generate"
+    "postinstall": "node ./node_modules/prisma/build/index.js generate --schema=packages/database/prisma/schema.prisma"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.0.0",
