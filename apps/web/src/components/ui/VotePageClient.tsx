@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { participantsApi, votingApi, sponsorsApi } from '../../../lib/api'
-import { Navbar } from '../../layouts/Navbar'
+import { participantsApi, votingApi, sponsorsApi } from '../../lib/api'
+import { Navbar } from '../layouts/Navbar'
 
 type Step = 'form' | 'otp' | 'success'
 
