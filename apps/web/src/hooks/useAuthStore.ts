@@ -8,10 +8,15 @@ interface User {
   phone: string
   fullName: string
   displayName: string
-  bio: string
+  bio: string | null
+  photoUrl: string | null
   role: string
   emailVerified: boolean
   phoneVerified: boolean
+  isActive: boolean
+  lastLoginAt: string | null
+  createdAt: string
+  updatedAt: string
   participant?: {
     id: string
     status: string

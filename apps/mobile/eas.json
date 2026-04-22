@@ -16,7 +16,7 @@
       "distribution": "internal",
       "channel": "production",
       "env": {
-        "API_URL": "https://fameafrica-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://fameafrica-api.onrender.com/api/v1"
       }
     }
   },
