@@ -15,15 +15,12 @@ export const metadata: Metadata = {
     locale: 'en_NG',
     type: 'website',
   },
+  metadataBase: new URL('https://fame-africa-web-ocvx.vercel.app'),
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Tailwind CSS CDN - for rapid development / prototyping */}
-        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-      </head>
       <body>
         <QueryProvider>
           <ThemeProvider>

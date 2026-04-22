@@ -37,6 +37,12 @@ export default function DashboardPage() {
   const aiAdvice = aiRes?.data?.data
 
   useEffect(() => {
+    if (!user) {
+      router.push('/auth/login')
+    }
+  }, [user, router])
+
+  useEffect(() => {
     if (!dashboard?.participant?.id) return
 
     const token = localStorage.getItem('accessToken')
@@ -55,12 +61,7 @@ export default function DashboardPage() {
     return () => { socket.disconnect() }
   }, [dashboard?.participant?.id])
 
-  if (!user) {
-    router.push('/auth/login')
-    return null
-  }
-
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-gray-400">Loading your dashboard...</div>
