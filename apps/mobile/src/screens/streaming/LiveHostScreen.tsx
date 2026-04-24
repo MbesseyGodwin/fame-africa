@@ -44,6 +44,8 @@ export default function LiveHostScreen() {
   const [torchOn, setTorchOn] = useState(false)
   const [isMirrored, setIsMirrored] = useState(true)
   const [isHD, setIsHD] = useState(false)
+  const [networkQuality, setNetworkQuality] = useState(1) // 1 = Excellent
+  const [screenFlash, setScreenFlash] = useState(false)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -120,8 +122,17 @@ export default function LiveHostScreen() {
         },
         onLeaveChannel: (connection, stats) => {
           console.log('[LiveHost] Agora: Left channel', connection, stats)
+        },
+        onNetworkQuality: (connection, remoteUid, txQuality, rxQuality) => {
+          if (remoteUid === 0) { // Local user
+            setNetworkQuality(txQuality)
+          }
         }
       })
+
+      // Audio Improvements: Noise suppression and High Quality voice
+      engine.current.setAudioProfile(3, 4) // Music High Quality, Stereo
+      engine.current.enableAudioVolumeIndication(200, 3, true)
 
       console.log('[LiveHost] Enabling video and starting preview')
       engine.current.enableVideo()
@@ -229,9 +240,13 @@ export default function LiveHostScreen() {
   }
 
   const toggleTorch = () => {
-    const newState = !torchOn
-    setTorchOn(newState)
-    engine.current?.setCameraTorchOn(newState)
+    if (isFrontCamera) {
+      setScreenFlash(!screenFlash)
+    } else {
+      const newState = !torchOn
+      setTorchOn(newState)
+      engine.current?.setCameraTorchOn(newState)
+    }
   }
 
   const toggleMirror = () => {
@@ -300,6 +315,13 @@ export default function LiveHostScreen() {
                 <Text style={styles.indicatorText}>
                   {isLive ? `LIVE • ${formatTime(secondsElapsed)}` : 'PREVIEW'}
                 </Text>
+                {isLive && (
+                  <View style={styles.networkBadge}>
+                    <View style={[styles.signalBar, { height: 4, backgroundColor: networkQuality <= 2 ? '#4ADE80' : networkQuality <= 4 ? '#FACC15' : '#EF4444' }]} />
+                    <View style={[styles.signalBar, { height: 7, backgroundColor: networkQuality <= 2 ? '#4ADE80' : networkQuality <= 4 ? '#FACC15' : '#991B1B' }]} />
+                    <View style={[styles.signalBar, { height: 10, backgroundColor: networkQuality <= 1 ? '#4ADE80' : '#991B1B' }]} />
+                  </View>
+                )}
               </View>
             </View>
           </BlurView>
@@ -354,11 +376,13 @@ export default function LiveHostScreen() {
 
           <TouchableOpacity style={styles.stackBtn} onPress={toggleTorch}>
             <Ionicons 
-              name={torchOn ? "flash" : "flash-outline"} 
+              name={isFrontCamera ? (screenFlash ? "sunny" : "sunny-outline") : (torchOn ? "flash" : "flash-outline")} 
               size={24} 
-              color={torchOn ? "#FFD700" : "#fff"} 
+              color={isFrontCamera ? (screenFlash ? "#fff" : "#fff") : (torchOn ? "#FFD700" : "#fff")} 
             />
-            <Text style={[styles.stackText, torchOn && { color: '#FFD700' }]}>Flash</Text>
+            <Text style={[styles.stackText, (torchOn || screenFlash) && { color: '#FFD700' }]}>
+              {isFrontCamera ? 'Screen Flash' : 'Flash'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.stackBtn} onPress={toggleMirror}>
@@ -406,6 +430,11 @@ export default function LiveHostScreen() {
             </View>
           )}
         </View>
+        
+        {/* Screen Flash Overlay */}
+        {screenFlash && isFrontCamera && (
+          <View style={styles.screenFlashOverlay} pointerEvents="none" />
+        )}
       </View>
     </View>
   )
@@ -473,5 +502,22 @@ const styles = StyleSheet.create({
   },
   viewerText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   endLiveBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 27, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  endLiveText: { color: '#fff', fontSize: 14, fontWeight: '800' }
+  endLiveText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  screenFlashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    borderWidth: 40,
+    borderColor: '#fff',
+  },
+  networkBadge: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 2,
+    marginLeft: 8,
+    height: 10
+  },
+  signalBar: {
+    width: 3,
+    borderRadius: 1
+  }
 })

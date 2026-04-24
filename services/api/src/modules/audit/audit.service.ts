@@ -5,14 +5,20 @@ import { logger } from '../../utils/logger';
 import { MerkleTree, generateVoteHash } from '../../utils/merkle';
 import { createWalletClient, http, publicActions, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import * as viemChains from 'viem/chains';
+import { baseSepolia, mainnet, polygon, optimism, arbitrum } from 'viem/chains';
+
+const COMMON_CHAINS: Record<number, any> = {
+  [baseSepolia.id]: baseSepolia,
+  [mainnet.id]: mainnet,
+  [polygon.id]: polygon,
+  [optimism.id]: optimism,
+  [arbitrum.id]: arbitrum,
+};
 
 function getTargetChain(chainIdStr?: string) {
-  if (!chainIdStr) return viemChains.baseSepolia;
+  if (!chainIdStr) return baseSepolia;
   const targetId = Number(chainIdStr);
-  // Scan all viem chains for matching ID
-  const found = Object.values(viemChains).find((c: any) => c?.id === targetId);
-  return (found as any) || viemChains.baseSepolia;
+  return COMMON_CHAINS[targetId] || baseSepolia;
 }
 
 
