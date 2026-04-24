@@ -56,7 +56,11 @@ export const prisma = new PrismaClient({
 // ── Middleware ────────────────────────────────────────────────
 app.use(helmet())
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || [
+    'http://localhost:3000',
+    'https://fame-africa-web.vercel.app',
+    'https://fameafrica-api.onrender.com'
+  ],
   credentials: true,
 }))
 app.use(express.json({ limit: '50mb' }))
@@ -135,7 +139,7 @@ app.use(errorHandler)
 setupRealtimeHandlers(io)
 
 // ── Start server ──────────────────────────────────────────────
-const PORT = parseInt(process.env.API_PORT || '4000', 10)
+const PORT = parseInt(process.env.PORT || process.env.API_PORT || '4000', 10)
 const HOST = process.env.API_HOST || '0.0.0.0'
 
 httpServer.listen(PORT, HOST, () => {
