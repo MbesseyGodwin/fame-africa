@@ -75,14 +75,17 @@ export default function AdminOverviewPage() {
   }
 
   // Mocked for smooth fallback if specific data hasn't seeded 1:1
-  const stats = dashData || {
+  // Correctly map stats from the backend field names
+  const stats = dashData?.stats || {
     totalParticipants: 0,
-    eliminatedToday: 0,
-    totalVotes: 0,
-    todayVotes: 0,
-    fraudFlagsOpen: 0,
-    activeCycleInfo: { name: 'Loading...', dayNumber: 0, totalDays: 0 }
+    eliminations: 0,
+    totalVotesAllTime: 0,
+    totalVotesToday: 0,
+    fraudFlags: 0,
+    dayNumber: 0
   }
+  
+  const activeCycle = dashData?.activeCycle
 
   // Parse trend data for the chart
   const trends = trendData || []
@@ -93,19 +96,19 @@ export default function AdminOverviewPage() {
 
       {/* Header string */}
       <h1 className="text-[18px] font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-        {stats.activeCycleInfo?.name || "Current Cycle"} — Day {stats.activeCycleInfo?.dayNumber || 0} of {stats.activeCycleInfo?.totalDays || '?'}
+        {activeCycle?.cycleName || "Current Cycle"} — Day {stats.dayNumber || 0}
       </h1>
 
       {/* Stats Grids */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard label="Active participants" value={stats.totalParticipants} highlighted />
-        <StatCard label="Eliminated today" value={stats.eliminatedToday} />
-        <StatCard label="Total votes cast" value={stats.totalVotes?.toLocaleString()} highlighted />
+        <StatCard label="Eliminations" value={stats.eliminations} />
+        <StatCard label="Total votes cast" value={stats.totalVotesAllTime?.toLocaleString()} highlighted />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard label="Votes today so far" value={stats.todayVotes?.toLocaleString()} />
-        <StatCard label="Fraud flags" value={stats.fraudFlagsOpen} danger={stats.fraudFlagsOpen > 0} />
+        <StatCard label="Votes today so far" value={stats.totalVotesToday?.toLocaleString()} />
+        <StatCard label="Fraud flags" value={stats.fraudFlags} danger={stats.fraudFlags > 0} />
         <StatCard label="Eliminations/day" value={elimCounts} />
       </div>
 

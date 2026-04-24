@@ -219,6 +219,19 @@ export async function getLiveVotes(req: Request, res: Response, next: NextFuncti
   } catch (error) { next(error) }
 }
 
+export async function listVotes(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { cycleId, limit = '100' } = req.query as { cycleId: string, limit: string }
+    const votes = await prisma.vote.findMany({
+      where: { ...(cycleId && { cycleId }) },
+      include: { participant: { select: { displayName: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
+    })
+    return ApiResponse.success(res, votes)
+  } catch (error) { next(error) }
+}
+
 export async function getVoteStats(req: Request, res: Response, next: NextFunction) {
   try {
     const { cycleId } = req.query as { cycleId: string }

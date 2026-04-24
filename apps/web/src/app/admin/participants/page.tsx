@@ -15,7 +15,7 @@ export default function AdminParticipantsPage() {
       const params: any = { page, limit: 15 }
       if (statusFilter !== 'ALL') params.status = statusFilter
       const res = await adminApi.getParticipants(params)
-      return res.data?.data
+      return res.data
     }
   })
 
@@ -27,9 +27,10 @@ export default function AdminParticipantsPage() {
   })
 
   // We are not passing full API signatures safely but typical pagination looks like this:
+  // Correctly handle the paginated response structure
   const participants = data?.data || []
-  const total = data?.total || 0
-  const pages = Math.ceil(total / 15) || 1
+  const total = data?.pagination?.total || 0
+  const pages = data?.pagination?.totalPages || 1
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">

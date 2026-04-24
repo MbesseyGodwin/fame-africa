@@ -44,6 +44,7 @@ adminRouter.delete('/participants/:id', AdminController.removeParticipant)
 
 // Votes
 adminRouter.get('/votes/live', AdminController.getLiveVotes)
+adminRouter.get('/votes/ledger', AdminController.listVotes)
 adminRouter.get('/votes/stats', AdminController.getVoteStats)
 
 // Eliminations

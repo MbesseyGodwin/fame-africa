@@ -20,7 +20,7 @@ export default function AdminUsersPage() {
       if (statusFilter === 'banned') params.isActive = 'false'
       
       const res = await adminUsersApi.listUsers(params)
-      return res.data?.data?.users || []
+      return res.data?.data || []
     }
   })
 

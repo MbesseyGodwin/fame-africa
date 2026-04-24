@@ -5,13 +5,19 @@ import { useQuery } from '@tanstack/react-query'
 import { adminApi, competitionsApi } from '../../../lib/api'
 
 export default function AdminVotesPage() {
-  const { data: cycleData } = useQuery({ queryKey: ['admin_cycle'], queryFn: () => competitionsApi.getCurrent() })
-  const cycleId = cycleData?.data?.data?.id
+  const { data: cycleData } = useQuery({ 
+    queryKey: ['admin_cycle'], 
+    queryFn: async () => {
+      const res = await competitionsApi.getCurrent()
+      return res.data?.data
+    }
+  })
+  const cycleId = cycleData?.id
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin_votes', cycleId],
     queryFn: async () => {
-      const res = await adminApi.getLiveVotes(cycleId)
+      const res = await adminApi.getVoteLedger({ cycleId, limit: 100 })
       return res.data?.data || []
     },
     enabled: !!cycleId,

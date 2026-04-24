@@ -203,6 +203,7 @@ export const adminApi = {
   getParticipants: (params: any) => api.get('/admin/participants', { params }),
   updateParticipantStatus: (id: string, status: string) => api.put(`/admin/participants/${id}/status`, { status }),
   getLiveVotes: (cycleId: string) => api.get('/admin/votes/live', { params: { cycleId } }),
+  getVoteLedger: (params: any) => api.get('/admin/votes/ledger', { params }),
   getEliminationQueue: (cycleId: string) => api.get('/admin/eliminations/queue', { params: { cycleId } }),
   getEliminations: (cycleId: string) => api.get('/admin/eliminations', { params: { cycleId } }),
   getFraudFlags: () => api.get('/admin/fraud-flags'),
