@@ -13,7 +13,10 @@ import {
   ClientRoleType,
   RtcSurfaceView,
   IRtcEngine,
-  RenderModeType
+  RenderModeType,
+  AudioProfileType,
+  AudioScenarioType,
+  VideoMirrorModeType
 } from 'react-native-agora'
 import { useAuth } from '../../context/AuthContext'
 import { streamingApi } from '../../utils/api'
@@ -131,7 +134,10 @@ export default function LiveHostScreen() {
       })
 
       // Audio Improvements: Noise suppression and High Quality voice
-      engine.current.setAudioProfile(3, 4) // Music High Quality, Stereo
+      engine.current.setAudioProfile(
+        AudioProfileType.AudioProfileMusicStandard,
+        AudioScenarioType.AudioScenarioChatroomEntertainment
+      )
       engine.current.enableAudioVolumeIndication(200, 3, true)
 
       console.log('[LiveHost] Enabling video and starting preview')
@@ -141,7 +147,7 @@ export default function LiveHostScreen() {
       engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster)
       
       // Set initial video settings
-      engine.current.setLocalVideoMirrorMode(1) // Mirrored by default
+      engine.current.setLocalVideoMirrorMode(VideoMirrorModeType.VideoMirrorModeEnabled) 
       engine.current.setVideoEncoderConfiguration({
         dimensions: { width: 640, height: 480 },
         frameRate: 24,
@@ -253,7 +259,9 @@ export default function LiveHostScreen() {
     const newState = !isMirrored
     setIsMirrored(newState)
     // In Agora v4, mirror mode is set via local video canvas or setLocalVideoMirrorMode
-    engine.current?.setLocalVideoMirrorMode(newState ? 1 : 2)
+    engine.current?.setLocalVideoMirrorMode(
+      newState ? VideoMirrorModeType.VideoMirrorModeEnabled : VideoMirrorModeType.VideoMirrorModeDisabled
+    )
   }
 
   const toggleQuality = () => {
