@@ -5,7 +5,11 @@ import { logger } from '../../utils/logger';
 import { MerkleTree, generateVoteHash } from '../../utils/merkle';
 import { createWalletClient, http, publicActions, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia, mainnet, polygon, optimism, arbitrum } from 'viem/chains';
+import { baseSepolia } from 'viem/chains/definitions/baseSepolia';
+import { mainnet } from 'viem/chains/definitions/mainnet';
+import { polygon } from 'viem/chains/definitions/polygon';
+import { optimism } from 'viem/chains/definitions/optimism';
+import { arbitrum } from 'viem/chains/definitions/arbitrum';
 
 const COMMON_CHAINS: Record<number, any> = {
   [baseSepolia.id]: baseSepolia,
