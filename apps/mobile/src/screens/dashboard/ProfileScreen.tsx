@@ -132,17 +132,18 @@ export default function ProfileScreen() {
 
         <Text style={s.sectionTitle}>Account</Text>
 
-
-        <MenuItem
-          icon="rocket"
-          iconBg="#EAF3DE"
-          iconColor="#3B6D11"
-          label="Mobilize (Dashboard)"
-          onPress={() => router.push('/dashboard')}
-          border={border}
-          textPrimary={textPrimary}
-          textSecondary={textSecondary}
-        />
+        {user?.role === 'PARTICIPANT' && (
+          <MenuItem
+            icon="rocket"
+            iconBg="#EAF3DE"
+            iconColor="#3B6D11"
+            label="Mobilize (Dashboard)"
+            onPress={() => router.push('/dashboard')}
+            border={border}
+            textPrimary={textPrimary}
+            textSecondary={textSecondary}
+          />
+        )}
 
 
         <MenuItem

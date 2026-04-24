@@ -1,5 +1,6 @@
 // apps/mobile/src/screens/vote/VoteScreen.tsx
 
+
 import React, { useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -46,9 +47,15 @@ export default function VoteScreen() {
     enabled: !!slug
   })
 
+  const { data: adRes } = useQuery({
+    queryKey: ['next-ad'],
+    queryFn: () => sponsorsApi.getNextAd(),
+    staleTime: 1000 * 60 * 2, // 2 mins
+  })
+
   const participant = pRes?.data?.data
   const fans = fansRes?.data?.data ?? []
-  const ad = adRes?.data?.data
+  const ad = adRes?.data?.data || ""
   const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
 
   // ── Mutations ───────────────────────────────────────────────
@@ -349,7 +356,7 @@ export default function VoteScreen() {
                 <Text style={s.badgeLabelText}>TOP STANS</Text>
               </View>
             </View>
-            
+
             {fans.length > 0 ? (
               <View style={s.fansContainer}>
                 {fans.slice(0, 5).map((fan: any, index: number) => (
@@ -357,9 +364,9 @@ export default function VoteScreen() {
                     <View style={s.fanRank}>
                       <Text style={s.fanRankText}>{index + 1}</Text>
                     </View>
-                    <Image 
-                      source={{ uri: fan.photoUrl || 'https://via.placeholder.com/100' }} 
-                      style={s.fanAvatar} 
+                    <Image
+                      source={{ uri: fan.photoUrl || 'https://via.placeholder.com/100' }}
+                      style={s.fanAvatar}
                     />
                     <View style={s.fanInfo}>
                       <Text style={s.fanName}>{fan.displayName}</Text>

@@ -82,26 +82,31 @@ app.get('/health', async (req, res) => {
 // ── API Routes ────────────────────────────────────────────────
 const API_PREFIX = '/api/v1'
 
-app.use(`${API_PREFIX}/auth`, authRouter)
-app.use(`${API_PREFIX}/users`, usersRouter)
-app.use(`${API_PREFIX}/competitions`, competitionsRouter)
-app.use(`${API_PREFIX}/participants`, participantsRouter)
-app.use(`${API_PREFIX}/votes`, votingRouter)
-app.use(`${API_PREFIX}/eliminations`, eliminationsRouter)
-app.use(`${API_PREFIX}/admin`, adminRouter)
-app.use(`${API_PREFIX}/sponsors`, sponsorsRouter)
-app.use(`${API_PREFIX}/notifications`, notificationsRouter)
-app.use(`${API_PREFIX}/stans`, stansRouter)
-app.use(`${API_PREFIX}/leaderboard`, leaderboardRouter)
-app.use(`${API_PREFIX}/kyc`, kycRouter)
-app.use(`${API_PREFIX}/winners`, winnersRouter)
-app.use(`${API_PREFIX}/audit`, auditRouter)
-app.use(`${API_PREFIX}/arena`, arenaRouter)
-app.use(`${API_PREFIX}/streaming`, streamingRouter)
-app.use(`${API_PREFIX}/moderation`, moderationRouter)
+app.use('/api/v1/auth', authRouter)
+app.use('/api/v1/users', usersRouter)
+app.use('/api/v1/competitions', competitionsRouter)
+app.use('/api/v1/participants', participantsRouter)
+app.use('/api/v1/votes', votingRouter)
+app.use('/api/v1/eliminations', eliminationsRouter)
+app.use('/api/v1/admin', adminRouter)
+app.use('/api/v1/sponsors', sponsorsRouter)
+app.use('/api/v1/notifications', notificationsRouter)
+app.use('/api/v1/stans', stansRouter)
+app.use('/api/v1/leaderboard', leaderboardRouter)
+app.use('/api/v1/kyc', kycRouter)
+app.use('/api/v1/winners', winnersRouter)
+app.use('/api/v1/audit', auditRouter)
+app.use('/api/v1/arena', arenaRouter)
+app.use('/api/v1/streaming', streamingRouter)
+app.use('/api/v1/moderation', moderationRouter)
 
 // ── Swagger UI Documentation ────────────────────────────────────
-app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerDocument, {
+const swaggerDocumentModified = { 
+  ...swaggerDocument,
+  host: process.env.API_URL ? process.env.API_URL.replace(/^https?:\/\//, '') : (swaggerDocument as any).host 
+}
+
+app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerDocumentModified, {
   customCss: `
     .swagger-ui .topbar { display: none }
     .swagger-ui .info .title { font-size: 2em; color: #534AB7; }

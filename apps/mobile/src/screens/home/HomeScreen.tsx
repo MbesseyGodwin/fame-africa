@@ -59,9 +59,13 @@ export default function HomeScreen() {
   // });
 
 
-  // After — correct
-  const cycle = cycleRes?.data?.data  // this IS correct: axios .data → API wrapper .data
-  console.log("📦 cycle:", cycle)     // just log cycle directly
+  const cycle = cycleRes?.data?.data
+  
+  useEffect(() => {
+    if (cycle) {
+      console.log("📦 Active Cycle:", cycle.cycleName)
+    }
+  }, [cycle])
 
 
   const eliminations = eliminationsRes?.data?.data || []

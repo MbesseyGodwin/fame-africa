@@ -33,6 +33,7 @@ export default function LiveHostScreen() {
   const engine = useRef<IRtcEngine | null>(null)
 
   const [loading, setLoading] = useState(true)
+  const [loadingStatus, setLoadingStatus] = useState('Initializing camera...')
   const [isLive, setIsLive] = useState(false)
   const [streamId, setStreamId] = useState<string | null>(null)
   const [micOn, setMicOn] = useState(true)
@@ -40,6 +41,9 @@ export default function LiveHostScreen() {
   const [viewerCount, setViewerCount] = useState(0)
   const [secondsElapsed, setSecondsElapsed] = useState(0)
   const [beautyEnabled, setBeautyEnabled] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
+  const [isMirrored, setIsMirrored] = useState(true)
+  const [isHD, setIsHD] = useState(false)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -52,12 +56,18 @@ export default function LiveHostScreen() {
   }, [isLive])
 
   useEffect(() => {
+    console.log('[LiveHost] Mounting screen')
     // 1. Refresh user first to ensure participant status is current
     refreshUser().then(() => {
+      console.log('[LiveHost] User refreshed, starting setup')
       setup()
+    }).catch(err => {
+      console.error('[LiveHost] Failed to refresh user', err)
+      setup() // try setup anyway
     })
-    
+
     return () => {
+      console.log('[LiveHost] Unmounting screen, cleaning up engine')
       if (engine.current) {
         engine.current.leaveChannel()
         engine.current.release()
@@ -67,8 +77,12 @@ export default function LiveHostScreen() {
 
   const setup = async () => {
     try {
+      console.log('[LiveHost] Requesting permissions...')
+      setLoadingStatus('Requesting permissions...')
       const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync()
       const { status: audioStatus } = await Audio.requestPermissionsAsync()
+
+      console.log('[LiveHost] Permissions:', { cameraStatus, audioStatus })
 
       if (cameraStatus !== 'granted' || audioStatus !== 'granted') {
         Alert.alert('Permission Required', 'We need camera and microphone access to go live.')
@@ -76,30 +90,58 @@ export default function LiveHostScreen() {
         return
       }
 
+      if (!AGORA_APP_ID || AGORA_APP_ID.includes('placeholder')) {
+        console.error('[LiveHost] Agora App ID is not configured correctly')
+      }
+
+      console.log('[LiveHost] Initializing Agora Engine with ID:', AGORA_APP_ID)
+      setLoadingStatus('Initializing Agora engine...')
       engine.current = createAgoraRtcEngine()
       engine.current.initialize({ appId: AGORA_APP_ID })
 
       engine.current.registerEventHandler({
-        onJoinChannelSuccess: () => {
+        onJoinChannelSuccess: (connection, elapsed) => {
+          console.log('[LiveHost] Agora: Joined channel successfully', connection, elapsed)
           setIsLive(true)
           setLoading(false)
         },
-        onUserJoined: () => setViewerCount(prev => prev + 1),
-        onUserOffline: () => setViewerCount(prev => Math.max(0, prev - 1)),
-        onError: (err) => {
-          console.error('Agora Error', err)
+        onUserJoined: (connection, remoteUid) => {
+          console.log('[LiveHost] Agora: User joined', remoteUid)
+          setViewerCount(prev => prev + 1)
+        },
+        onUserOffline: (connection, remoteUid) => {
+          console.log('[LiveHost] Agora: User offline', remoteUid)
+          setViewerCount(prev => Math.max(0, prev - 1))
+        },
+        onError: (err, msg) => {
+          console.error('[LiveHost] Agora: Error callback', err, msg)
+          Alert.alert('Agora Error', `Code: ${err}\nMessage: ${msg || 'Unknown error'}`)
           setLoading(false)
+        },
+        onLeaveChannel: (connection, stats) => {
+          console.log('[LiveHost] Agora: Left channel', connection, stats)
         }
       })
 
+      console.log('[LiveHost] Enabling video and starting preview')
       engine.current.enableVideo()
       engine.current.startPreview()
       engine.current.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting)
       engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster)
+      
+      // Set initial video settings
+      engine.current.setLocalVideoMirrorMode(1) // Mirrored by default
+      engine.current.setVideoEncoderConfiguration({
+        dimensions: { width: 640, height: 480 },
+        frameRate: 24,
+        bitrate: 800,
+      })
 
+      console.log('[LiveHost] Setup complete')
       setLoading(false)
-    } catch (error) {
-      console.error('Setup Error', error)
+    } catch (error: any) {
+      console.error('[LiveHost] Setup Error', error)
+      Alert.alert('Setup Error', error.message || 'Failed to initialize camera')
       setLoading(false)
     }
   }
@@ -110,21 +152,43 @@ export default function LiveHostScreen() {
       return
     }
 
+    console.log('[LiveHost] Starting Go Live process...')
     setLoading(true)
+    setLoadingStatus('Starting broadcast...')
+
+    // Timeout mechanism
+    const timeoutId = setTimeout(() => {
+      if (!isLive) {
+        console.warn('[LiveHost] Go Live timed out after 30s')
+        Alert.alert('Connection Timeout', 'Taking too long to join. Please check your internet connection.')
+        setLoading(false)
+      }
+    }, 30000)
+
     try {
+      console.log('[LiveHost] Calling startStream API')
       const streamRes = await streamingApi.startStream({
         participantId: user.participant.id,
         title: `${user.displayName || user.fullName}'s Live Arena`
       })
       const streamData = streamRes.data.data
+      console.log('[LiveHost] Stream created:', streamData.id)
       setStreamId(streamData.id)
 
+      console.log('[LiveHost] Fetching Agora token for channel:', streamData.channelName)
+      setLoadingStatus('Fetching secure token...')
       const tokenRes = await streamingApi.getToken(streamData.channelName, 'PUBLISHER')
       const token = tokenRes.data.data.token
+      console.log('[LiveHost] Token received')
 
+      console.log('[LiveHost] Joining Agora channel...')
+      setLoadingStatus('Joining live channel...')
       engine.current?.joinChannel(token, streamData.channelName, 0, {})
+
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Could not start broadcast')
+      clearTimeout(timeoutId)
+      console.error('[LiveHost] Go Live Error', error)
+      Alert.alert('Broadcast Error', error.response?.data?.message || error.message || 'Could not start broadcast')
       setLoading(false)
     }
   }
@@ -136,11 +200,16 @@ export default function LiveHostScreen() {
         text: 'End Now',
         style: 'destructive',
         onPress: async () => {
+          console.log('[LiveHost] Ending stream...')
           try {
-            if (streamId) await streamingApi.endStream(streamId)
+            if (streamId) {
+              await streamingApi.endStream(streamId)
+              console.log('[LiveHost] Stream ended on backend')
+            }
             engine.current?.leaveChannel()
             router.back()
           } catch (err) {
+            console.error('[LiveHost] Error ending stream', err)
             router.back()
           }
         }
@@ -159,6 +228,29 @@ export default function LiveHostScreen() {
     })
   }
 
+  const toggleTorch = () => {
+    const newState = !torchOn
+    setTorchOn(newState)
+    engine.current?.setCameraTorchOn(newState)
+  }
+
+  const toggleMirror = () => {
+    const newState = !isMirrored
+    setIsMirrored(newState)
+    // In Agora v4, mirror mode is set via local video canvas or setLocalVideoMirrorMode
+    engine.current?.setLocalVideoMirrorMode(newState ? 1 : 2)
+  }
+
+  const toggleQuality = () => {
+    const newState = !isHD
+    setIsHD(newState)
+    engine.current?.setVideoEncoderConfiguration({
+      dimensions: newState ? { width: 1280, height: 720 } : { width: 640, height: 480 },
+      frameRate: 24,
+      bitrate: newState ? 1500 : 800,
+    })
+  }
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -169,7 +261,7 @@ export default function LiveHostScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FE2C55" />
-        <Text style={styles.loadingText}>Initializing Camera...</Text>
+        <Text style={styles.loadingText}>{loadingStatus}</Text>
       </View>
     )
   }
@@ -186,8 +278,8 @@ export default function LiveHostScreen() {
 
       {/* Glassmorphic Overlays */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        <LinearGradient 
-          colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']} 
+        <LinearGradient
+          colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -195,8 +287,8 @@ export default function LiveHostScreen() {
         {/* TOP HEADER */}
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <BlurView intensity={20} tint="dark" style={styles.hostBadge}>
-            <Image 
-              source={{ uri: user?.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}` }} 
+            <Image
+              source={{ uri: user?.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}` }}
               style={styles.hostAvatar}
             />
             <View style={styles.hostInfo}>
@@ -214,8 +306,8 @@ export default function LiveHostScreen() {
 
           <View style={styles.headerRight}>
             {!isLive && (
-              <TouchableOpacity 
-                style={styles.closeBtn} 
+              <TouchableOpacity
+                style={styles.closeBtn}
                 onPress={() => router.push('/streaming/history')}
               >
                 <Ionicons name="time-outline" size={24} color="#fff" />
@@ -229,8 +321,8 @@ export default function LiveHostScreen() {
 
         {/* MIDDLE - VERTICAL UTILITIES */}
         <View style={styles.sideStack}>
-          <TouchableOpacity 
-            style={styles.stackBtn} 
+          <TouchableOpacity
+            style={styles.stackBtn}
             onPress={() => {
               setIsFrontCamera(!isFrontCamera)
               engine.current?.switchCamera()
@@ -248,16 +340,43 @@ export default function LiveHostScreen() {
             <Text style={styles.stackText}>{micOn ? 'Mute' : 'Unmute'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.stackBtn}
             onPress={toggleBeauty}
           >
-            <Ionicons 
-              name="sparkles-outline" 
-              size={24} 
-              color={beautyEnabled ? "#FE2C55" : "#fff"} 
+            <Ionicons
+              name="sparkles-outline"
+              size={24}
+              color={beautyEnabled ? "#FE2C55" : "#fff"}
             />
             <Text style={[styles.stackText, beautyEnabled && { color: '#FE2C55' }]}>Beauty</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.stackBtn} onPress={toggleTorch}>
+            <Ionicons 
+              name={torchOn ? "flash" : "flash-outline"} 
+              size={24} 
+              color={torchOn ? "#FFD700" : "#fff"} 
+            />
+            <Text style={[styles.stackText, torchOn && { color: '#FFD700' }]}>Flash</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.stackBtn} onPress={toggleMirror}>
+            <MaterialCommunityIcons 
+              name={isMirrored ? "mirror" : "mirror-variant"} 
+              size={24} 
+              color={isMirrored ? "#4ADE80" : "#fff"} 
+            />
+            <Text style={[styles.stackText, isMirrored && { color: '#4ADE80' }]}>Mirror</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.stackBtn} onPress={toggleQuality}>
+            <MaterialCommunityIcons 
+              name={isHD ? "high-definition" : "standard-definition"} 
+              size={24} 
+              color={isHD ? "#60A5FA" : "#fff"} 
+            />
+            <Text style={[styles.stackText, isHD && { color: '#60A5FA' }]}>{isHD ? '720p' : '480p'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -265,8 +384,8 @@ export default function LiveHostScreen() {
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
           {!isLive ? (
             <TouchableOpacity style={styles.mainActionBtn} onPress={goLive}>
-              <LinearGradient 
-                colors={['#FE2C55', '#D62144']} 
+              <LinearGradient
+                colors={['#FE2C55', '#D62144']}
                 style={styles.gradientBtn}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -280,7 +399,7 @@ export default function LiveHostScreen() {
                 <Ionicons name="eye-outline" size={16} color="#fff" />
                 <Text style={styles.viewerText}>{viewerCount}</Text>
               </View>
-              
+
               <TouchableOpacity style={styles.endLiveBtn} onPress={endStream}>
                 <Text style={styles.endLiveText}>END STREAM</Text>
               </TouchableOpacity>
@@ -298,11 +417,11 @@ const styles = StyleSheet.create({
   loadingText: { color: '#fff', marginTop: 16, fontSize: 14, fontWeight: '500' },
   videoWrapper: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, overflow: 'hidden' },
   fullVideo: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingHorizontal: 16 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16
   },
   hostBadge: {
     flexDirection: 'row',
@@ -322,20 +441,20 @@ const styles = StyleSheet.create({
   indicatorText: { color: '#bbb', fontSize: 9, fontWeight: '700', marginLeft: 4 },
   headerRight: { flexDirection: 'row', gap: 12 },
   closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
-  sideStack: { 
-    position: 'absolute', 
-    right: 16, 
-    top: '30%', 
+  sideStack: {
+    position: 'absolute',
+    right: 16,
+    top: '30%',
     gap: 20,
     alignItems: 'center'
   },
   stackBtn: { alignItems: 'center' },
   stackText: { color: '#fff', fontSize: 10, marginTop: 4, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 },
-  footer: { 
-    position: 'absolute', 
-    bottom: 0, 
-    left: 0, 
-    right: 0, 
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -343,12 +462,12 @@ const styles = StyleSheet.create({
   gradientBtn: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   mainActionText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
   liveControls: { alignItems: 'center', gap: 16 },
-  viewerBadge: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(0,0,0,0.4)', 
-    paddingHorizontal: 12, 
-    paddingVertical: 5, 
+  viewerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 15,
     gap: 4
   },

@@ -42,15 +42,22 @@ export async function registerForPushNotificationsAsync() {
     }
 
     try {
-      token = (await Notifications.getExpoPushTokenAsync({
+      // getExpoPushTokenAsync can fail on Android if Firebase is not properly initialized
+      // We wrap it in a try-catch to prevent the app from logging a fatal error
+      const tokenResponse = await Notifications.getExpoPushTokenAsync({
         projectId,
-      })).data
-      console.log('Expo Push Token:', token)
+      })
+      token = tokenResponse.data
+      console.log('[Notifications] Expo Push Token:', token)
 
       // Send to backend
       await notificationsApi.registerPushToken(token)
-    } catch (e) {
-      console.error('Error fetching push token', e)
+    } catch (e: any) {
+      if (e.message?.includes('FirebaseApp is not initialized')) {
+        console.warn('[Notifications] Push token fetch skipped: Firebase not initialized. (Normal for development without google-services.json)')
+      } else {
+        console.warn('[Notifications] Error fetching push token:', e.message)
+      }
     }
   } else {
     console.log('Must use physical device for Push Notifications')

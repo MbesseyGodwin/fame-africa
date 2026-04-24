@@ -18,7 +18,7 @@ export const api = axios.create({
 export const uploadApi = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'multipart/form-data' },
-  timeout: 180000, 
+  timeout: 180000,
 })
 
 
@@ -99,6 +99,7 @@ export const participantsApi = {
   register: (data: any) => uploadApi.post('/participants/register', data),
   getPublicVotes: (slug: string, params?: any) => api.get(`/participants/${slug}/public-votes`, { params }),
   getPublicStans: (slug: string, params?: any) => api.get(`/participants/${slug}/public-stans`, { params }),
+  getTopFans: (slug: string) => api.get(`/participants/${slug}/top-fans`),
   requestWithdrawal: () => api.post('/participants/me/withdraw'),
   confirmWithdrawal: (token: string) => api.post('/participants/me/withdraw/confirm', { token }),
   getAiAdvice: () => api.get('/participants/me/ai-advice'),
@@ -163,38 +164,38 @@ export const stansApi = {
 export const arenaApi = {
   listEvents: (cycleId: string) => api.get('/arena/events', { params: { cycleId } }),
   getEventDetail: (id: string) => api.get(`/arena/events/${id}`),
-  submitAnswer: (data: { eventId: string, questionId: string, selectedOption: number, timeSpentSeconds: number }) => 
+  submitAnswer: (data: { eventId: string, questionId: string, selectedOption: number, timeSpentSeconds: number }) =>
     api.post('/arena/submit', data),
 }
 
 // ── Streaming ─────────────────────────────────────────────────
 export const streamingApi = {
-  getToken: (channelName: string, role?: 'PUBLISHER' | 'SUBSCRIBER') => 
+  getToken: (channelName: string, role?: 'PUBLISHER' | 'SUBSCRIBER') =>
     api.get('/streaming/token', { params: { channelName, role } }),
-  startStream: (data: { participantId: string, title: string }) => 
+  startStream: (data: { participantId: string, title: string }) =>
     api.post('/streaming/start', data),
-  endStream: (streamId: string) => 
+  endStream: (streamId: string) =>
     api.post(`/streaming/${streamId}/end`),
-  listLive: (cycleId?: string) => 
+  listLive: (cycleId?: string) =>
     api.get('/streaming/live', { params: { cycleId } }),
-  listRecorded: (params?: { cycleId?: string, search?: string, category?: string, sortBy?: string, page?: number, limit?: number }) => 
+  listRecorded: (params?: { cycleId?: string; search?: string; category?: string; sortBy?: string; page?: number; limit?: number }, p0?: number) =>
     api.get('/streaming/recorded', { params }),
-  getMyHistory: () => 
+  getMyHistory: () =>
     api.get('/streaming/my-history'),
-  getRecordingLink: (streamId: string) => 
+  getRecordingLink: (streamId: string) =>
     api.get(`/streaming/${streamId}/link`),
-  deleteStream: (streamId: string) => 
+  deleteStream: (streamId: string) =>
     api.delete(`/streaming/${streamId}`),
-  reportStream: (streamId: string, reason: string) => 
+  reportStream: (streamId: string, reason: string) =>
     api.post('/moderation/reports', { targetStreamId: streamId, reason }),
 }
 
 // ── Moderation ────────────────────────────────────────────────
 export const moderationApi = {
-  submitReport: (data: { targetParticipantId?: string, targetStreamId?: string, reason: string }) => 
+  submitReport: (data: { targetParticipantId?: string, targetStreamId?: string, reason: string }) =>
     api.post('/moderation/reports', data),
-  listReports: (status?: string) => 
+  listReports: (status?: string) =>
     api.get('/moderation/reports', { params: { status } }),
-  resolveReport: (id: string, actionTaken: string) => 
+  resolveReport: (id: string, actionTaken: string) =>
     api.patch(`/moderation/reports/${id}`, { actionTaken }),
 }

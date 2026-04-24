@@ -1,1762 +1,3457 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "VoteNaija API",
-    "description": "Complete API documentation for the VoteNaija reality competition platform.\n\nAll endpoints are prefixed with `/api/v1`. Authentication uses Bearer JWT tokens — click **Authorize** and paste your access token.",
-    "version": "1.0.0",
-    "contact": {
-      "name": "VoteNaija Dev Team"
-    }
+    "title": "FameAfrica API",
+    "description": "Complete API documentation for the FameAfrica reality competition platform.",
+    "version": "1.0.0"
   },
   "host": "localhost:4000",
-  "basePath": "/api/v1",
-  "schemes": ["http", "https"],
-  "consumes": ["application/json"],
-  "produces": ["application/json"],
+  "basePath": "/",
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints"
+    },
+    {
+      "name": "Users",
+      "description": "User profile and management"
+    },
+    {
+      "name": "Competitions",
+      "description": "Competitions and cycles"
+    },
+    {
+      "name": "Participants",
+      "description": "Contestant operations"
+    },
+    {
+      "name": "Votes",
+      "description": "Voting and interactions"
+    },
+    {
+      "name": "Eliminations",
+      "description": "Evictions and eliminations"
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative actions"
+    },
+    {
+      "name": "Sponsors",
+      "description": "Sponsors and partnerships"
+    },
+    {
+      "name": "Notifications",
+      "description": "In-app notifications"
+    },
+    {
+      "name": "Stans",
+      "description": "Fan clubs and stans"
+    },
+    {
+      "name": "Leaderboard",
+      "description": "Rankings and charts"
+    },
+    {
+      "name": "KYC",
+      "description": "Identity verification"
+    },
+    {
+      "name": "Winners",
+      "description": "Past winners and hall of fame"
+    },
+    {
+      "name": "Audit",
+      "description": "Audit logs"
+    },
+    {
+      "name": "Arena",
+      "description": "Competition arenas"
+    },
+    {
+      "name": "Streaming",
+      "description": "Live streaming features"
+    },
+    {
+      "name": "Moderation",
+      "description": "Content moderation"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
   "securityDefinitions": {
     "bearerAuth": {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "Enter your JWT token as: **Bearer &lt;token&gt;**"
+      "description": "Enter your token in the format **Bearer &lt;token>**"
     }
   },
-  "tags": [
-    { "name": "Auth", "description": "Registration, login, OTP, password reset" },
-    { "name": "Users", "description": "User profile and preferences" },
-    { "name": "Competitions", "description": "Competition cycles" },
-    { "name": "Participants", "description": "Contestant registration, dashboard, analytics" },
-    { "name": "Voting", "description": "OTP-verified voting flow" },
-    { "name": "Leaderboard", "description": "Public rankings and daily vote leaderboards" },
-    { "name": "Eliminations", "description": "Elimination results" },
-    { "name": "Sponsors", "description": "Sponsor banners and ad tracking" },
-    { "name": "Notifications", "description": "User notifications" },
-    { "name": "Stans", "description": "Fan clubs — stan/unstan contestants" },
-    { "name": "Admin", "description": "Admin-only management endpoints (requires ADMIN role)" }
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
   ],
   "paths": {
-
-    "/auth/register": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Register a new account",
-        "description": "Creates a new user account. Rate-limited.",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["fullName", "displayName", "email", "phone", "password"],
-            "properties": {
-              "fullName": { "type": "string", "example": "Godwin Mbessey", "minLength": 2, "maxLength": 100 },
-              "displayName": { "type": "string", "example": "GodwinM", "minLength": 2, "maxLength": 50 },
-              "email": { "type": "string", "format": "email", "example": "godwin@example.com" },
-              "phone": { "type": "string", "example": "+2348012345678" },
-              "password": { "type": "string", "example": "MyPass@123", "minLength": 8 }
-            }
-          }
-        }],
-        "responses": {
-          "201": { "description": "Account created successfully" },
-          "422": { "description": "Validation error" },
-          "429": { "description": "Too many requests" }
-        }
-      }
-    },
-
-    "/auth/login": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Login with email and password",
-        "description": "Returns access and refresh tokens. Rate-limited.",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["email", "password"],
-            "properties": {
-              "email": { "type": "string", "format": "email", "example": "admin@votenaija.ng" },
-              "password": { "type": "string", "example": "Admin@VoteNaija2026!" }
-            }
-          }
-        }],
+    "/health": {
+      "get": {
+        "description": "",
         "responses": {
           "200": {
-            "description": "Login successful",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "success": { "type": "boolean" },
-                "data": {
-                  "type": "object",
-                  "properties": {
-                    "accessToken": { "type": "string" },
-                    "refreshToken": { "type": "string" },
-                    "user": { "type": "object" }
-                  }
-                }
-              }
-            }
+            "description": "OK"
           },
-          "401": { "description": "Invalid credentials" },
-          "429": { "description": "Too many attempts" }
-        }
-      }
-    },
-
-    "/auth/logout": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Logout (invalidate session)",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Logged out successfully" }
-        }
-      }
-    },
-
-    "/auth/send-otp": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Send OTP to phone number",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["phone", "purpose"],
-            "properties": {
-              "phone": { "type": "string", "example": "+2348012345678" },
-              "purpose": { "type": "string", "enum": ["register", "login", "vote", "reset"], "example": "login" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "OTP sent" },
-          "429": { "description": "Too many requests" }
-        }
-      }
-    },
-
-    "/auth/verify-otp": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Verify OTP code",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["phone", "otpCode", "purpose"],
-            "properties": {
-              "phone": { "type": "string", "example": "+2348012345678" },
-              "otpCode": { "type": "string", "example": "123456", "minLength": 6, "maxLength": 6 },
-              "purpose": { "type": "string", "enum": ["register", "login", "vote", "reset"] }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "OTP verified" },
-          "400": { "description": "Invalid or expired OTP" }
-        }
-      }
-    },
-
-    "/auth/refresh-token": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Refresh access token",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["refreshToken"],
-            "properties": {
-              "refreshToken": { "type": "string" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "New access token returned" },
-          "401": { "description": "Invalid refresh token" }
-        }
-      }
-    },
-
-    "/auth/forgot-password": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Request password reset email",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["email"],
-            "properties": {
-              "email": { "type": "string", "format": "email", "example": "user@example.com" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Reset email sent" }
-        }
-      }
-    },
-
-    "/auth/reset-password": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Reset password with token",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["token", "password"],
-            "properties": {
-              "token": { "type": "string" },
-              "password": { "type": "string", "minLength": 8, "example": "NewPass@123" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Password reset successful" }
-        }
-      }
-    },
-
-    "/auth/verify-email": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Send email verification",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Verification email sent" }
-        }
-      }
-    },
-
-    "/auth/request-deletion": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Request account deletion (sends security code)",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Security code sent to email" }
-        }
-      }
-    },
-
-    "/auth/confirm-deletion": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Confirm account deletion with security code",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["otpCode"],
-            "properties": {
-              "otpCode": { "type": "string", "example": "123456" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Account deleted" }
-        }
-      }
-    },
-
-
-    "/users/me": {
-      "get": {
-        "tags": ["Users"],
-        "summary": "Get current user profile",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "User profile with preferences and participant info" },
-          "401": { "description": "Not authenticated" }
-        }
-      },
-      "put": {
-        "tags": ["Users"],
-        "summary": "Update user profile",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "schema": {
-            "type": "object",
-            "properties": {
-              "fullName": { "type": "string", "example": "Godwin M" },
-              "displayName": { "type": "string", "example": "GodwinM" },
-              "bio": { "type": "string", "example": "Music lover and contestant" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Profile updated" }
-        }
-      }
-    },
-
-    "/users/me/preferences": {
-      "get": {
-        "tags": ["Users"],
-        "summary": "Get user preferences (theme, notifications, etc.)",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "User preferences object" }
-        }
-      },
-      "put": {
-        "tags": ["Users"],
-        "summary": "Update user preferences",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "schema": {
-            "type": "object",
-            "properties": {
-              "primaryColor": { "type": "string", "example": "#534AB7" },
-              "darkMode": { "type": "boolean", "example": false },
-              "emailNotifications": { "type": "boolean", "example": true },
-              "smsNotifications": { "type": "boolean", "example": false },
-              "pushNotifications": { "type": "boolean", "example": true },
-              "fontSize": { "type": "integer", "example": 14 },
-              "borderRadius": { "type": "string", "example": "8px" },
-              "compactMode": { "type": "boolean", "example": false }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Preferences saved" }
-        }
-      }
-    },
-
-    "/users/me/photo": {
-      "post": {
-        "tags": ["Users"],
-        "summary": "Upload profile photo",
-        "security": [{ "bearerAuth": [] }],
-        "consumes": ["multipart/form-data"],
-        "parameters": [{
-          "in": "formData",
-          "name": "photo",
-          "type": "file",
-          "required": true,
-          "description": "Profile photo to upload"
-        }],
-        "responses": {
-          "200": { "description": "Photo uploaded, temporary URL returned" },
-          "400": { "description": "No file uploaded" }
-        }
-      }
-    },
-
-
-    "/competitions/current": {
-      "get": {
-        "tags": ["Competitions"],
-        "summary": "Get the current active competition cycle",
-        "responses": {
-          "200": {
-            "description": "Current cycle object (DRAFT, REGISTRATION_OPEN, VOTING_OPEN, etc.)",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "success": { "type": "boolean" },
-                "data": {
-                  "type": "object",
-                  "properties": {
-                    "id": { "type": "string" },
-                    "cycleName": { "type": "string" },
-                    "status": { "type": "string", "enum": ["DRAFT", "REGISTRATION_OPEN", "REGISTRATION_CLOSED", "VOTING_OPEN", "COMPLETED", "CANCELLED"] }
-                  }
-                }
-              }
-            }
+          "503": {
+            "description": "Service Unavailable"
           }
         }
       }
     },
-
-    "/competitions/{id}": {
-      "get": {
-        "tags": ["Competitions"],
-        "summary": "Get competition cycle by ID",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string",
-          "description": "Competition cycle ID"
-        }],
-        "responses": {
-          "200": { "description": "Cycle details" }
-        }
-      }
-    },
-
-    "/competitions/{id}/stats": {
-      "get": {
-        "tags": ["Competitions"],
-        "summary": "Get competition statistics",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": {
-            "description": "Stats object",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "success": { "type": "boolean" },
-                "data": {
-                  "type": "object",
-                  "properties": {
-                    "total": { "type": "integer" },
-                    "active": { "type": "integer" },
-                    "eliminated": { "type": "integer" },
-                    "totalVotes": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-
-
-    "/participants": {
-      "get": {
-        "tags": ["Participants"],
-        "summary": "List all participants (public)",
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register a new user",
+        "description": "",
         "parameters": [
-          { "in": "query", "name": "cycleId", "type": "string", "description": "Filter by cycle" },
-          { "in": "query", "name": "status", "type": "string", "enum": ["ACTIVE", "ELIMINATED", "DISQUALIFIED"] },
-          { "in": "query", "name": "category", "type": "string" },
-          { "in": "query", "name": "page", "type": "integer", "default": 1 },
-          { "in": "query", "name": "limit", "type": "integer", "default": 20 }
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Registration payload",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "fullName": {
+                  "type": "string",
+                  "example": "John Doe"
+                },
+                "displayName": {
+                  "type": "string",
+                  "example": "Johnny"
+                },
+                "email": {
+                  "type": "string",
+                  "example": "john@example.com"
+                },
+                "phone": {
+                  "type": "string",
+                  "example": "+2348012345678"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "Password123"
+                }
+              },
+              "required": [
+                "fullName",
+                "displayName",
+                "email",
+                "phone",
+                "password"
+              ]
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Paginated list of participants" }
-        }
-      }
-    },
-
-    "/participants/register": {
-      "post": {
-        "tags": ["Participants"],
-        "summary": "Register as a contestant",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["cycleId", "displayName"],
-            "properties": {
-              "cycleId": { "type": "string" },
-              "displayName": { "type": "string", "example": "DJ Starboy", "minLength": 2, "maxLength": 50 },
-              "bio": { "type": "string", "example": "Lagos-based DJ ready to win!" },
-              "state": { "type": "string", "example": "Lagos" },
-              "city": { "type": "string", "example": "Ikeja" }
-            }
+          "422": {
+            "description": "Unprocessable Entity"
           }
-        }],
-        "responses": {
-          "201": { "description": "Registered successfully" },
-          "400": { "description": "Already registered or registration closed" }
         }
       }
     },
-
-    "/participants/{slug}": {
-      "get": {
-        "tags": ["Participants"],
-        "summary": "Get participant by slug (public)",
-        "parameters": [{
-          "in": "path",
-          "name": "slug",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Participant profile" },
-          "404": { "description": "Not found" }
-        }
-      }
-    },
-
-    "/participants/me/dashboard": {
-      "get": {
-        "tags": ["Participants"],
-        "summary": "Get contestant's mobilization dashboard",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "Dashboard with stats, ranks, vote link, campaign card",
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login to your account",
+        "description": "",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Login credentials",
             "schema": {
               "type": "object",
               "properties": {
-                "success": { "type": "boolean" },
-                "data": {
-                  "type": "object",
-                  "properties": {
-                    "participant": { "type": "object" },
-                    "cycle": { "type": "object" },
-                    "todayVotes": { "type": "integer" },
-                    "currentRank": { "type": "integer" },
-                    "activeParticipants": { "type": "integer" },
-                    "voteLink": { "type": "string" }
-                  }
+                "email": {
+                  "type": "string",
+                  "example": "admin@votenaija.ng"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "Admin@VoteNaija2026!"
+                }
+              },
+              "required": [
+                "email",
+                "password"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout user",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/auth/send-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Send an OTP to phone",
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "phone": {
+                  "type": "string",
+                  "example": "+2348012345678"
+                },
+                "purpose": {
+                  "type": "string",
+                  "example": "register"
+                }
+              },
+              "required": [
+                "phone",
+                "purpose"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verify OTP",
+        "description": "",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "phone": {
+                  "type": "string",
+                  "example": "+2348012345678"
+                },
+                "otpCode": {
+                  "type": "string",
+                  "example": "123456"
+                },
+                "purpose": {
+                  "type": "string",
+                  "example": "register"
+                }
+              },
+              "required": [
+                "phone",
+                "otpCode",
+                "purpose"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh-token": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Refresh Access Token",
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "refreshToken": {
+                  "example": "any"
                 }
               }
             }
           }
-        }
-      }
-    },
-
-    "/participants/me/analytics": {
-      "get": {
-        "tags": ["Participants"],
-        "summary": "Get contestant's daily vote analytics",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Analytics with daily tallies" }
-        }
-      }
-    },
-
-    "/participants/me/generate-card": {
-      "post": {
-        "tags": ["Participants"],
-        "summary": "Generate viral campaign card image",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Campaign card URL returned" }
-        }
-      }
-    },
-
-    "/participants/me/profile": {
-      "put": {
-        "tags": ["Participants"],
-        "summary": "Update contestant profile",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "schema": {
-            "type": "object",
-            "properties": {
-              "displayName": { "type": "string" },
-              "bio": { "type": "string" },
-              "state": { "type": "string" },
-              "city": { "type": "string" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Profile updated" }
-        }
-      }
-    },
-
-    "/participants/payment/webhook": {
-      "post": {
-        "tags": ["Participants"],
-        "summary": "Payment provider webhook",
-        "description": "Called by payment gateway to confirm registration fee payment.",
-        "responses": {
-          "200": { "description": "Webhook processed" }
-        }
-      }
-    },
-
-
-    "/votes/send-otp": {
-      "post": {
-        "tags": ["Voting"],
-        "summary": "Send vote OTP to voter's phone",
-        "description": "Sends a 6-digit OTP code to verify the voter before casting. Rate-limited.",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["participantSlug", "voterPhone", "voterEmail"],
-            "properties": {
-              "participantSlug": { "type": "string", "example": "dj-starboy" },
-              "voterPhone": { "type": "string", "example": "+2348012345678" },
-              "voterEmail": { "type": "string", "format": "email", "example": "voter@example.com" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "OTP sent to phone" },
-          "429": { "description": "Rate limit exceeded" }
-        }
-      }
-    },
-
-    "/votes/cast": {
-      "post": {
-        "tags": ["Voting"],
-        "summary": "Cast a verified vote",
-        "description": "Submit the OTP to cast the vote. Rate-limited.",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["participantSlug", "voterPhone", "voterEmail", "otpCode"],
-            "properties": {
-              "participantSlug": { "type": "string", "example": "dj-starboy" },
-              "voterPhone": { "type": "string", "example": "+2348012345678" },
-              "voterEmail": { "type": "string", "format": "email", "example": "voter@example.com" },
-              "otpCode": { "type": "string", "example": "123456" },
-              "deviceFingerprint": { "type": "string" },
-              "source": { "type": "string", "enum": ["link", "app", "web"], "example": "app" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Vote cast successfully" },
-          "400": { "description": "Invalid OTP or already voted" },
-          "429": { "description": "Rate limit exceeded" }
-        }
-      }
-    },
-
-    "/votes/check/{phone}": {
-      "get": {
-        "tags": ["Voting"],
-        "summary": "Check if a phone number has already voted",
-        "parameters": [
-          { "in": "path", "name": "phone", "required": true, "type": "string", "description": "Voter phone number" },
-          { "in": "query", "name": "cycleId", "type": "string", "description": "Competition cycle ID" }
         ],
         "responses": {
-          "200": { "description": "Vote status check result" }
+          "default": {
+            "description": ""
+          }
         }
       }
     },
-
-
-    "/eliminations/current-cycle": {
-      "get": {
-        "tags": ["Eliminations"],
-        "summary": "Get all eliminations for the current voting cycle",
-        "responses": {
-          "200": { "description": "List of eliminated participants with details" }
-        }
-      }
-    },
-
-    "/eliminations/today": {
-      "get": {
-        "tags": ["Eliminations"],
-        "summary": "Get today's eliminations",
-        "responses": {
-          "200": { "description": "Eliminations that occurred today" }
-        }
-      }
-    },
-
-
-    "/sponsors/cycle/{cycleId}": {
-      "get": {
-        "tags": ["Sponsors"],
-        "summary": "Get sponsors for a specific cycle",
-        "parameters": [{
-          "in": "path",
-          "name": "cycleId",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "List of active sponsors" }
-        }
-      }
-    },
-
-    "/sponsors/next-ad": {
-      "get": {
-        "tags": ["Sponsors"],
-        "summary": "Get the next sponsor ad to display",
-        "responses": {
-          "200": { "description": "Sponsor ad object" }
-        }
-      }
-    },
-
-    "/sponsors/track-impression": {
+    "/api/v1/auth/forgot-password": {
       "post": {
-        "tags": ["Sponsors"],
-        "summary": "Track an ad impression or click",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "schema": {
-            "type": "object",
-            "properties": {
-              "sponsorId": { "type": "string" },
-              "type": { "type": "string", "enum": ["impression", "click"] }
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Forgot password link request",
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                }
+              }
             }
           }
-        }],
+        ],
         "responses": {
-          "200": { "description": "Tracked" }
+          "422": {
+            "description": "Unprocessable Entity"
+          }
         }
       }
     },
-
-
-    "/notifications": {
-      "get": {
-        "tags": ["Notifications"],
-        "summary": "Get all notifications for current user",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "List of notifications (last 50)" }
-        }
-      }
-    },
-
-    "/notifications/read-all": {
-      "put": {
-        "tags": ["Notifications"],
-        "summary": "Mark all notifications as read",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "All marked as read" }
-        }
-      }
-    },
-
-    "/notifications/{id}/read": {
-      "put": {
-        "tags": ["Notifications"],
-        "summary": "Mark a single notification as read",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string",
-          "description": "Notification ID"
-        }],
-        "responses": {
-          "200": { "description": "Marked as read" },
-          "404": { "description": "Notification not found" }
-        }
-      }
-    },
-
-
-    "/stans": {
+    "/api/v1/auth/reset-password": {
       "post": {
-        "tags": ["Stans"],
-        "summary": "Stan (subscribe to) a contestant",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["participantId"],
-            "properties": {
-              "participantId": { "type": "string" }
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset password",
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "password": {
+                  "example": "any"
+                },
+                "token": {
+                  "example": "any"
+                }
+              }
             }
           }
-        }],
+        ],
         "responses": {
-          "200": { "description": "You are now stanning this contestant!" }
+          "422": {
+            "description": "Unprocessable Entity"
+          }
         }
       }
     },
-
-    "/stans/me": {
+    "/api/v1/auth/verify-email": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/auth/request-deletion": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/auth/confirm-deletion": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "user-agent",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "otpCode": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/auth/change-email": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "newEmail": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me": {
       "get": {
-        "tags": ["Stans"],
-        "summary": "Get contestants I am stanning",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
         "responses": {
-          "200": { "description": "List of stanned contestants" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      },
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "fullName": {
+                  "example": "any"
+                },
+                "displayName": {
+                  "example": "any"
+                },
+                "bio": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Users"
+        ]
       }
     },
-
-    "/stans/{participantId}": {
+    "/api/v1/users/me/preferences": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "example": "any"
+                },
+                "userId": {
+                  "example": "any"
+                },
+                "createdAt": {
+                  "example": "any"
+                },
+                "updatedAt": {
+                  "example": "any"
+                },
+                "allowedPrefs": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      },
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/users/me/photo": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/users/me/password": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "currentPassword": {
+                  "example": "any"
+                },
+                "newPassword": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/users/me/phone": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "phone": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/users/me/activity": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/competitions/current": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Competitions"
+        ]
+      }
+    },
+    "/api/v1/competitions/{id}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Competitions"
+        ]
+      }
+    },
+    "/api/v1/competitions/{id}/stats": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Competitions"
+        ]
+      }
+    },
+    "/api/v1/competitions/all": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Competitions"
+        ]
+      }
+    },
+    "/api/v1/competitions/{id}/winners": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Competitions"
+        ]
+      }
+    },
+    "/api/v1/participants/": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/search": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/{slug}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/{slug}/votes": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/{slug}/stans": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/{slug}/top-fans": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/register": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/me/dashboard": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/me/analytics": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/me/generate-card": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/me/profile": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/me/ai-advice": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/me/withdraw": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/me/withdraw/confirm": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/participants/payment/webhook": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "verif-hash",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "event": {
+                  "example": "any"
+                },
+                "data": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "Participants"
+        ]
+      }
+    },
+    "/api/v1/votes/send-otp": {
+      "post": {
+        "description": "",
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Votes"
+        ]
+      }
+    },
+    "/api/v1/votes/cast": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Votes"
+        ]
+      }
+    },
+    "/api/v1/votes/check/{phone}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "phone",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Votes"
+        ]
+      }
+    },
+    "/api/v1/votes/my-history": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Votes"
+        ]
+      }
+    },
+    "/api/v1/votes/stats": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Votes"
+        ]
+      }
+    },
+    "/api/v1/votes/recent": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Votes"
+        ]
+      }
+    },
+    "/api/v1/eliminations/current-cycle": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Eliminations"
+        ]
+      }
+    },
+    "/api/v1/eliminations/today": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Eliminations"
+        ]
+      }
+    },
+    "/api/v1/eliminations/{id}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Eliminations"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/cycles": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      },
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/cycles/{id}": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      },
       "delete": {
-        "tags": ["Stans"],
-        "summary": "Unstan a contestant",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "participantId",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Unstanned successfully" }
-        }
-      }
-    },
-
-    "/stans/participant/{participantId}": {
-      "get": {
-        "tags": ["Stans"],
-        "summary": "Get all stans (fans) for a participant",
-        "parameters": [{
-          "in": "path",
-          "name": "participantId",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "List of stans" }
-        }
-      }
-    },
-
-
-    "/admin/dashboard": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get admin dashboard overview",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Dashboard stats" },
-          "403": { "description": "Admin access required" }
-        }
-      }
-    },
-
-    "/admin/cycles": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "List all competition cycles",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "All cycles" }
-        }
-      },
-      "post": {
-        "tags": ["Admin"],
-        "summary": "Create a new competition cycle",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["cycleName", "cycleNumber", "registrationOpen", "registrationClose", "votingOpen", "votingClose", "revealAt", "registrationFee"],
-            "properties": {
-              "cycleName": { "type": "string", "example": "Season 2" },
-              "cycleNumber": { "type": "integer", "example": 2 },
-              "registrationOpen": { "type": "string", "format": "date-time" },
-              "registrationClose": { "type": "string", "format": "date-time" },
-              "votingOpen": { "type": "string", "format": "date-time" },
-              "votingClose": { "type": "string", "format": "date-time" },
-              "revealAt": { "type": "string", "format": "date-time" },
-              "registrationFee": { "type": "number", "example": 5000 }
-            }
-          }
-        }],
-        "responses": {
-          "201": { "description": "Cycle created" }
-        }
-      }
-    },
-
-    "/admin/cycles/{id}": {
-      "put": {
-        "tags": ["Admin"],
-        "summary": "Update a competition cycle",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Cycle updated" }
-        }
-      }
-    },
-
-    "/admin/cycles/{id}/status": {
-      "put": {
-        "tags": ["Admin"],
-        "summary": "Update cycle status (e.g. open voting)",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "type": "string" },
           {
-            "in": "body",
-            "name": "body",
+            "name": "id",
+            "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/cycles/{id}/status": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
             "schema": {
               "type": "object",
-              "required": ["status"],
               "properties": {
-                "status": { "type": "string", "enum": ["DRAFT", "REGISTRATION_OPEN", "REGISTRATION_CLOSED", "VOTING_OPEN", "COMPLETED", "CANCELLED"] }
+                "status": {
+                  "example": "any"
+                }
               }
             }
           }
         ],
         "responses": {
-          "200": { "description": "Status updated" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/settings/{cycleId}": {
+    "/api/v1/admin/settings/{cycleId}": {
       "get": {
-        "tags": ["Admin"],
-        "summary": "Get settings for a competition cycle",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "cycleId",
-          "required": true,
-          "type": "string"
-        }],
+        "description": "",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
         "responses": {
-          "200": { "description": "Cycle settings" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       },
       "put": {
-        "tags": ["Admin"],
-        "summary": "Update cycle settings",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
         "parameters": [
-          { "in": "path", "name": "cycleId", "required": true, "type": "string" },
           {
-            "in": "body",
-            "name": "body",
+            "name": "cycleId",
+            "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
             "schema": {
               "type": "object",
-              "required": ["settings"],
               "properties": {
                 "settings": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": ["key", "value"],
-                    "properties": {
-                      "key": { "type": "string", "example": "maxVotesPerDay" },
-                      "value": { "type": "string", "example": "5" }
-                    }
-                  }
+                  "example": "any"
                 }
               }
             }
           }
         ],
         "responses": {
-          "200": { "description": "Settings updated" }
-        }
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/settings/global": {
+    "/api/v1/admin/settings/global": {
       "get": {
-        "tags": ["Admin"],
-        "summary": "Get global platform settings",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
         "responses": {
-          "200": { "description": "Global settings" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       },
       "put": {
-        "tags": ["Admin"],
-        "summary": "Update global platform settings",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Settings updated" }
-        }
-      }
-    },
-
-    "/admin/participants": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "List all participants (admin view)",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
         "parameters": [
-          { "in": "query", "name": "cycleId", "type": "string" },
-          { "in": "query", "name": "status", "type": "string" },
-          { "in": "query", "name": "page", "type": "integer" },
-          { "in": "query", "name": "limit", "type": "integer" }
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
         ],
         "responses": {
-          "200": { "description": "Paginated participants" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/participants/{id}/status": {
-      "put": {
-        "tags": ["Admin"],
-        "summary": "Update participant status",
-        "security": [{ "bearerAuth": [] }],
+    "/api/v1/admin/participants": {
+      "get": {
+        "description": "",
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "type": "string" },
           {
-            "in": "body",
-            "name": "body",
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/participants/{id}/status": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
             "schema": {
               "type": "object",
-              "required": ["status"],
               "properties": {
-                "status": { "type": "string", "enum": ["PENDING", "ACTIVE", "ELIMINATED", "DISQUALIFIED"] }
+                "status": {
+                  "example": "any"
+                }
               }
             }
           }
         ],
         "responses": {
-          "200": { "description": "Status updated" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/participants/{id}": {
+    "/api/v1/admin/participants/{id}": {
       "delete": {
-        "tags": ["Admin"],
-        "summary": "Remove a participant",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Participant removed" }
-        }
-      }
-    },
-
-    "/admin/votes/live": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get live vote tallies",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "query",
-          "name": "cycleId",
-          "type": "string",
-          "required": true
-        }],
-        "responses": {
-          "200": { "description": "Live vote data" }
-        }
-      }
-    },
-
-    "/admin/votes/stats": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get vote statistics",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Vote stats" }
-        }
-      }
-    },
-
-    "/admin/eliminations": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get elimination history",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "query",
-          "name": "cycleId",
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Elimination records" }
-        }
-      }
-    },
-
-    "/admin/eliminations/queue": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get elimination queue (lowest vote participants)",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "query",
-          "name": "cycleId",
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Queue of candidates for elimination" }
-        }
-      }
-    },
-
-    "/admin/eliminations/run": {
-      "post": {
-        "tags": ["Admin"],
-        "summary": "Trigger daily elimination",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Elimination executed" }
-        }
-      }
-    },
-
-    "/admin/fraud-flags": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get fraud detection flags",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "List of fraud flags" }
-        }
-      }
-    },
-
-    "/admin/fraud-flags/{id}/resolve": {
-      "put": {
-        "tags": ["Admin"],
-        "summary": "Resolve a fraud flag",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "type": "string" },
           {
-            "in": "body",
-            "name": "body",
+            "name": "id",
+            "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/votes/live": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/votes/stats": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/eliminations": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/eliminations/queue": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/eliminations/run": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/fraud-flags": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/fraud-flags/{id}/resolve": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
             "schema": {
               "type": "object",
-              "required": ["resolution"],
               "properties": {
-                "resolution": { "type": "string", "example": "Dismissed — legitimate voter" }
+                "resolution": {
+                  "example": "any"
+                }
               }
             }
           }
         ],
         "responses": {
-          "200": { "description": "Flag resolved" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/audit-log": {
+    "/api/v1/admin/audit-log": {
       "get": {
-        "tags": ["Admin"],
-        "summary": "Get admin audit log",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
         "parameters": [
-          { "in": "query", "name": "page", "type": "integer" },
-          { "in": "query", "name": "limit", "type": "integer" },
-          { "in": "query", "name": "action", "type": "string" }
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          }
         ],
         "responses": {
-          "200": { "description": "Paginated audit log entries" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/sponsors": {
+    "/api/v1/admin/sponsors": {
       "get": {
-        "tags": ["Admin"],
-        "summary": "List sponsors",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "query",
-          "name": "cycleId",
-          "type": "string"
-        }],
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
         "responses": {
-          "200": { "description": "List of sponsors" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       },
       "post": {
-        "tags": ["Admin"],
-        "summary": "Create a new sponsor",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "properties": {
-              "companyName": { "type": "string", "example": "MTN Nigeria" },
-              "cycleId": { "type": "string" },
-              "logoUrl": { "type": "string" },
-              "bannerImageUrl": { "type": "string" },
-              "prizeDescription": { "type": "string", "example": "Win 1GB data daily!" },
-              "displayOrder": { "type": "integer", "example": 1 },
-              "isActive": { "type": "boolean", "example": true }
-            }
-          }
-        }],
-        "responses": {
-          "201": { "description": "Sponsor created" }
-        }
-      }
-    },
-
-    "/admin/sponsors/{id}": {
-      "put": {
-        "tags": ["Admin"],
-        "summary": "Update a sponsor",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "type": "string" },
           {
-            "in": "body",
-            "name": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "companyName": { "type": "string" },
-                "logoUrl": { "type": "string" },
-                "bannerImageUrl": { "type": "string" },
-                "prizeDescription": { "type": "string" },
-                "displayOrder": { "type": "integer" },
-                "isActive": { "type": "boolean" }
-              }
-            }
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
           }
         ],
         "responses": {
-          "200": { "description": "Sponsor updated" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/sponsors/{id}": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       },
       "delete": {
-        "tags": ["Admin"],
-        "summary": "Delete a sponsor",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Sponsor deleted" }
-        }
-      }
-    },
-
-
-    "/auth/change-email": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Change email address",
-        "description": "Updates the authenticated user's email. Resets email verification status.",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["newEmail"],
-            "properties": {
-              "newEmail": { "type": "string", "format": "email", "example": "newemail@example.com" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Email updated. Verification email sent." },
-          "409": { "description": "Email already in use" }
-        }
-      }
-    },
-
-
-    "/users/me/password": {
-      "put": {
-        "tags": ["Users"],
-        "summary": "Change password",
-        "description": "Change the authenticated user's password. Requires current password.",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["currentPassword", "newPassword"],
-            "properties": {
-              "currentPassword": { "type": "string", "example": "OldPass@123" },
-              "newPassword": { "type": "string", "example": "NewPass@456", "minLength": 8 }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Password changed" },
-          "400": { "description": "Current password incorrect" }
-        }
-      }
-    },
-
-    "/users/me/phone": {
-      "put": {
-        "tags": ["Users"],
-        "summary": "Update phone number",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["phone"],
-            "properties": {
-              "phone": { "type": "string", "example": "+2349012345678" }
-            }
-          }
-        }],
-        "responses": {
-          "200": { "description": "Phone updated" },
-          "409": { "description": "Phone already in use" }
-        }
-      }
-    },
-
-    "/users/me/activity": {
-      "get": {
-        "tags": ["Users"],
-        "summary": "Get user's activity history",
-        "description": "Returns votes cast, stanned contestants, and recent notifications.",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Activity summary" }
-        }
-      }
-    },
-
-
-    "/competitions/all": {
-      "get": {
-        "tags": ["Competitions"],
-        "summary": "List all competition cycles (public archive)",
-        "description": "Returns all past and present cycles with participant/vote counts.",
-        "responses": {
-          "200": { "description": "List of all cycles" }
-        }
-      }
-    },
-
-    "/competitions/{id}/winners": {
-      "get": {
-        "tags": ["Competitions"],
-        "summary": "Get winners of a competition",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Winners list with rankings" },
-          "404": { "description": "Cycle not found" }
-        }
-      }
-    },
-
-
-    "/participants/search": {
-      "get": {
-        "tags": ["Participants"],
-        "summary": "Search participants",
-        "description": "Search by name, state, category with pagination.",
+        "description": "",
         "parameters": [
-          { "in": "query", "name": "q", "type": "string", "description": "Search query (name, city, state)" },
-          { "in": "query", "name": "category", "type": "string" },
-          { "in": "query", "name": "state", "type": "string" },
-          { "in": "query", "name": "cycleId", "type": "string" },
-          { "in": "query", "name": "page", "type": "integer", "default": 1 },
-          { "in": "query", "name": "limit", "type": "integer", "default": 20 }
-        ],
-        "responses": {
-          "200": { "description": "Paginated search results" }
-        }
-      }
-    },
-
-    "/participants/{slug}/votes": {
-      "get": {
-        "tags": ["Participants"],
-        "summary": "Get participant's public vote info",
-        "description": "Returns total votes and daily trend for the last 14 days.",
-        "parameters": [{
-          "in": "path",
-          "name": "slug",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Vote info with daily trend" },
-          "404": { "description": "Participant not found" }
-        }
-      }
-    },
-
-    "/participants/{slug}/stans": {
-      "get": {
-        "tags": ["Participants"],
-        "summary": "Get participant's stan/fan count",
-        "parameters": [{
-          "in": "path",
-          "name": "slug",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Stan count and recent stans" },
-          "404": { "description": "Participant not found" }
-        }
-      }
-    },
-
-
-    "/votes/my-history": {
-      "get": {
-        "tags": ["Voting"],
-        "summary": "Get my voting history",
-        "description": "Returns the authenticated user's complete voting history with participant and cycle details.",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          { "in": "query", "name": "page", "type": "integer", "default": 1 },
-          { "in": "query", "name": "limit", "type": "integer", "default": 20 }
-        ],
-        "responses": {
-          "200": { "description": "Paginated vote history" }
-        }
-      }
-    },
-
-    "/votes/stats": {
-      "get": {
-        "tags": ["Voting"],
-        "summary": "Get public vote statistics",
-        "description": "Total votes, votes today, active participants, unique voters for current cycle.",
-        "responses": {
-          "200": { "description": "Public vote stats" }
-        }
-      }
-    },
-
-    "/votes/recent": {
-      "get": {
-        "tags": ["Voting"],
-        "summary": "Get recent votes feed",
-        "description": "Anonymized feed showing recent votes (e.g. 'Someone voted for DJ Starboy').",
-        "parameters": [
-          { "in": "query", "name": "limit", "type": "integer", "default": 15 }
-        ],
-        "responses": {
-          "200": { "description": "Recent votes feed" }
-        }
-      }
-    },
-
-
-    "/leaderboard": {
-      "get": {
-        "tags": ["Leaderboard"],
-        "summary": "Get current cycle leaderboard",
-        "description": "Ranked list of participants by total votes for the active competition cycle.",
-        "parameters": [
-          { "in": "query", "name": "page", "type": "integer", "default": 1 },
-          { "in": "query", "name": "limit", "type": "integer", "default": 50 }
-        ],
-        "responses": {
-          "200": { "description": "Leaderboard with rankings and cycle info" }
-        }
-      }
-    },
-
-    "/leaderboard/daily": {
-      "get": {
-        "tags": ["Leaderboard"],
-        "summary": "Get today's vote rankings",
-        "description": "Ranked by votes received today (for VOTING_OPEN cycles only).",
-        "responses": {
-          "200": { "description": "Today's rankings" }
-        }
-      }
-    },
-
-    "/leaderboard/{cycleId}": {
-      "get": {
-        "tags": ["Leaderboard"],
-        "summary": "Get leaderboard for a specific cycle",
-        "parameters": [{
-          "in": "path",
-          "name": "cycleId",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Cycle leaderboard" },
-          "404": { "description": "Cycle not found" }
-        }
-      }
-    },
-
-
-    "/eliminations/{id}": {
-      "get": {
-        "tags": ["Eliminations"],
-        "summary": "Get elimination details by ID",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Elimination details with participant and cycle info" },
-          "404": { "description": "Elimination not found" }
-        }
-      }
-    },
-
-
-    "/notifications/unread-count": {
-      "get": {
-        "tags": ["Notifications"],
-        "summary": "Get unread notification count",
-        "description": "Returns the count of unread notifications for badge display.",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Unread count" }
-        }
-      }
-    },
-
-    "/notifications/{id}": {
-      "delete": {
-        "tags": ["Notifications"],
-        "summary": "Delete a notification",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Notification deleted" },
-          "404": { "description": "Notification not found" }
-        }
-      }
-    },
-
-
-    "/stans/check/{participantId}": {
-      "get": {
-        "tags": ["Stans"],
-        "summary": "Check if you are stanning a participant",
-        "description": "Returns whether the authenticated user is currently stanning the given participant. Used for UI toggle state.",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "participantId",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "{ isStanning: true/false }" }
-        }
-      }
-    },
-
-
-    "/admin/users": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "List all users",
-        "description": "Paginated, searchable by name/email/phone/role.",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          { "in": "query", "name": "page", "type": "integer", "default": 1 },
-          { "in": "query", "name": "limit", "type": "integer", "default": 50 },
-          { "in": "query", "name": "search", "type": "string", "description": "Search by name, email, or phone" },
-          { "in": "query", "name": "role", "type": "string", "enum": ["VOTER", "PARTICIPANT", "ADMIN", "SUPER_ADMIN"] }
-        ],
-        "responses": {
-          "200": { "description": "Paginated user list" }
-        }
-      }
-    },
-
-    "/admin/users/{id}": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get user details",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "Full user profile with activity" },
-          "404": { "description": "User not found" }
-        }
-      }
-    },
-
-    "/admin/users/{id}/role": {
-      "put": {
-        "tags": ["Admin"],
-        "summary": "Change user role",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          { "in": "path", "name": "id", "required": true, "type": "string" },
           {
-            "in": "body",
-            "name": "body",
+            "name": "id",
+            "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/role": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
             "schema": {
               "type": "object",
-              "required": ["role"],
               "properties": {
-                "role": { "type": "string", "enum": ["VOTER", "PARTICIPANT", "ADMIN", "SUPER_ADMIN"] }
+                "role": {
+                  "example": "any"
+                }
               }
             }
           }
         ],
         "responses": {
-          "200": { "description": "Role updated" }
-        }
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/users/{id}/ban": {
+    "/api/v1/admin/users/{id}/ban": {
       "put": {
-        "tags": ["Admin"],
-        "summary": "Ban a user",
-        "description": "Deactivates the user account.",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "User banned" }
-        }
-      }
-    },
-
-    "/admin/users/{id}/unban": {
-      "put": {
-        "tags": ["Admin"],
-        "summary": "Unban (reactivate) a user",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "required": true,
-          "type": "string"
-        }],
-        "responses": {
-          "200": { "description": "User reactivated" }
-        }
-      }
-    },
-
-    "/admin/stats/overview": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get platform-wide statistics",
-        "description": "Total users, votes, cycles, sponsors, fraud flags, and new users this month.",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Platform stats overview" }
-        }
-      }
-    },
-
-    "/admin/stats/votes-over-time": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Get vote trend data for charts",
-        "description": "Daily vote totals for building trend charts.",
-        "security": [{ "bearerAuth": [] }],
+        "description": "",
         "parameters": [
-          { "in": "query", "name": "days", "type": "integer", "default": 14, "description": "Number of days to look back" },
-          { "in": "query", "name": "cycleId", "type": "string", "description": "Filter by cycle" }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
         ],
         "responses": {
-          "200": { "description": "Array of { date, totalVotes }" }
-        }
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
       }
     },
-
-    "/admin/notifications/broadcast": {
+    "/api/v1/admin/users/{id}/unban": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/stats/overview": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/stats/votes-over-time": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/notifications/broadcast": {
       "post": {
-        "tags": ["Admin"],
-        "summary": "Broadcast notification to all users",
-        "description": "Sends a notification to all active users, optionally filtered by role.",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["title", "body"],
-            "properties": {
-              "title": { "type": "string", "example": "New Season Starting!" },
-              "body": { "type": "string", "example": "Season 2 registration is now open. Join the competition!" },
-              "type": { "type": "string", "enum": ["SYSTEM", "CYCLE_STARTING", "CYCLE_ENDING"], "default": "SYSTEM" },
-              "targetRole": { "type": "string", "enum": ["VOTER", "PARTICIPANT", "ADMIN"], "description": "Optional: only send to users with this role" },
-              "cycleId": { "type": "string", "description": "Optional: link notification to a cycle" }
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "example": "any"
+                },
+                "body": {
+                  "example": "any"
+                },
+                "type": {
+                  "example": "any"
+                },
+                "targetRole": {
+                  "example": "any"
+                },
+                "cycleId": {
+                  "example": "any"
+                }
+              }
             }
           }
-        }],
+        ],
         "responses": {
-          "200": { "description": "Broadcast sent with recipient count" }
-        }
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/sponsors/cycle/{cycleId}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sponsors"
+        ]
+      }
+    },
+    "/api/v1/sponsors/next-ad": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sponsors"
+        ]
+      }
+    },
+    "/api/v1/sponsors/track-impression": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "sponsorId": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sponsors"
+        ]
+      }
+    },
+    "/api/v1/notifications/": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/push-token": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "pushToken": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/stans/": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "participantId": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Stans"
+        ]
+      }
+    },
+    "/api/v1/stans/me": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Stans"
+        ]
+      }
+    },
+    "/api/v1/stans/{participantId}": {
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "participantId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Stans"
+        ]
+      }
+    },
+    "/api/v1/stans/participant/{participantId}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "participantId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Stans"
+        ]
+      }
+    },
+    "/api/v1/stans/check/{participantId}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "participantId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Stans"
+        ]
+      }
+    },
+    "/api/v1/leaderboard/": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Leaderboard"
+        ]
+      }
+    },
+    "/api/v1/leaderboard/daily": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leaderboard"
+        ]
+      }
+    },
+    "/api/v1/leaderboard/{cycleId}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Leaderboard"
+        ]
+      }
+    },
+    "/api/v1/kyc/submit": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "bvn": {
+                  "example": "any"
+                },
+                "idType": {
+                  "example": "any"
+                },
+                "idNumber": {
+                  "example": "any"
+                },
+                "idImageUrl": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "KYC"
+        ]
+      }
+    },
+    "/api/v1/kyc/me": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "KYC"
+        ]
+      }
+    },
+    "/api/v1/winners/": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Winners"
+        ]
+      }
+    },
+    "/api/v1/audit/verify/{voteId}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "voteId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/audit/admin/trigger-seal": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "example": "any"
+                },
+                "cycleId": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/arena/events": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Arena"
+        ]
+      },
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "cycleId": {
+                  "example": "any"
+                },
+                "title": {
+                  "example": "any"
+                },
+                "scheduledAt": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Arena"
+        ]
+      }
+    },
+    "/api/v1/arena/events/{id}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Arena"
+        ]
+      }
+    },
+    "/api/v1/arena/events/{id}/live": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Arena"
+        ]
+      }
+    },
+    "/api/v1/arena/submit": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "eventId": {
+                  "example": "any"
+                },
+                "questionId": {
+                  "example": "any"
+                },
+                "selectedOption": {
+                  "example": "any"
+                },
+                "timeSpentSeconds": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Arena"
+        ]
+      }
+    },
+    "/api/v1/arena/events/{id}/end": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Arena"
+        ]
+      }
+    },
+    "/api/v1/streaming/token": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "channelName",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/start": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "example": "any"
+                },
+                "participantId": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/{streamId}/end": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "streamId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/live": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/webhook/agora": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "event": {
+                  "example": "any"
+                },
+                "data": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/my-history": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/participant/{participantId}/history": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "participantId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/recorded": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/{streamId}/link": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "streamId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/streaming/{streamId}": {
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "streamId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "tags": [
+          "Streaming"
+        ]
+      }
+    },
+    "/api/v1/moderation/reports": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "targetParticipantId": {
+                  "example": "any"
+                },
+                "targetStreamId": {
+                  "example": "any"
+                },
+                "reason": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      },
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/reports/{id}": {
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "actionTaken": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
       }
     }
-
-  }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
 }

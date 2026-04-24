@@ -54,6 +54,7 @@ export default function StreamHistoryScreen() {
 
   const renderItem = ({ item }: { item: StreamLog }) => {
     const isRecorded = item.status === 'RECORDED'
+    const isLiveNow = item.status === 'LIVE'
     const duration = item.endTime
       ? Math.floor((new Date(item.endTime).getTime() - new Date(item.startTime).getTime()) / 60000)
       : 0
@@ -85,7 +86,14 @@ export default function StreamHistoryScreen() {
         <View style={styles.cardHeader}>
           <View style={styles.titleInfo}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={styles.streamTitle}>{item.title || 'Untitled Stream'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.streamTitle}>{item.title || 'Untitled Stream'}</Text>
+                {isLiveNow && (
+                  <View style={styles.liveBadge}>
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
+                  </View>
+                )}
+              </View>
               <TouchableOpacity onPress={() => handleDelete(item.id)}>
                 <Ionicons name="trash-outline" size={18} color="#999" />
               </TouchableOpacity>
@@ -103,7 +111,14 @@ export default function StreamHistoryScreen() {
           </View>
           <View style={styles.statItem}>
             <Ionicons name="time-outline" size={16} color="#666" />
-            <Text style={styles.statValue}>{duration} mins</Text>
+            <Text style={styles.statValue}>
+              {isLiveNow 
+                ? 'Live Now' 
+                : duration === 0 
+                  ? '< 1 min' 
+                  : `${duration} mins`
+              }
+            </Text>
           </View>
           <View style={styles.statItem}>
             <Ionicons name="heart-outline" size={16} color="#666" />
@@ -216,5 +231,7 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', marginTop: 100 },
   emptyText: { fontSize: 15, color: '#999', marginTop: 16, textAlign: 'center', paddingHorizontal: 40 },
   goLiveBtn: { backgroundColor: '#FE2C55', marginTop: 24, paddingHorizontal: 32, paddingVertical: 12, borderRadius: 24 },
-  goLiveText: { color: '#fff', fontWeight: '800' }
+  goLiveText: { color: '#fff', fontWeight: '800' },
+  liveBadge: { backgroundColor: '#FE2C55', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  liveBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' }
 })

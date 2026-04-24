@@ -6,6 +6,7 @@ node_modules/
 # Build outputs
 dist/
 build/
+*build
 .next/
 out/
 *.log
@@ -22,6 +23,10 @@ out/
 .expo/
 *.jks
 *.p12
+*.apk
+apps/mobile/build-*.apk
+android/app/build/
+ios/build/
 *.key
 *.mobileprovision
 android/build/

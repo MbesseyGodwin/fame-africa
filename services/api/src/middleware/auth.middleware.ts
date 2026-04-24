@@ -6,11 +6,17 @@ import { ApiResponse } from '../utils/response'
 
 export async function authenticate(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
-  if (!authHeader?.startsWith('Bearer ')) {
+  if (!authHeader) {
     return ApiResponse.unauthorized(res, 'Authentication required')
   }
 
-  const token = authHeader.slice(7)
+  // Handle cases with or without "Bearer ", and multiple "Bearer "
+  const token = authHeader.replace(/^(Bearer\s+)+/i, '').trim()
+  
+  if (!token) {
+    return ApiResponse.unauthorized(res, 'Invalid token format')
+  }
+
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string; role: string }
     const user = await prisma.user.findUnique({
@@ -48,9 +54,11 @@ export const requireSuperAdmin = requireRole('SUPER_ADMIN')
  */
 export async function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
-  if (!authHeader?.startsWith('Bearer ')) return next()
+  if (!authHeader) return next()
 
-  const token = authHeader.slice(7)
+  const token = authHeader.replace(/^(Bearer\s+)+/i, '').trim()
+  if (!token) return next()
+
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string; role: string }
     const user = await prisma.user.findUnique({

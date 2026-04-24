@@ -9,7 +9,7 @@ import { arenaApi } from '../../utils/api'
 import { io as socketIO } from 'socket.io-client'
 import * as SecureStore from 'expo-secure-store'
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:4000'
+const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://fameafrica-api.onrender.com'
 
 const { width } = Dimensions.get('window')
 
@@ -24,7 +24,7 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
   const { theme, textPrimary, textSecondary, surface, bg } = useTheme()
   const router = useRouter()
   const socketRef = useRef<any>(null)
-  
+
   const [loading, setLoading] = useState(true)
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -39,7 +39,7 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
 
   useEffect(() => {
     fetchEvent()
-    
+
     async function initSocket() {
       const token = await SecureStore.getItemAsync('accessToken')
       const socket = socketIO(API_URL, { auth: { token } })
@@ -48,7 +48,7 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
     }
 
     initSocket()
-    
+
     return () => {
       if (socketRef.current) {
         socketRef.current.emit('arena:leave', eventId)
@@ -68,7 +68,7 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
           return prev - 1
         })
       }, 1000)
-      
+
       return () => clearInterval(interval)
     }
   }, [currentIndex, questions, isGameOver, hasAnswered])
@@ -89,9 +89,9 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
     if (hasAnswered) return
     setSelectedIdx(idx)
     setHasAnswered(true)
-    
+
     const question = questions[currentIndex]
-    
+
     arenaApi.submitAnswer({
       eventId,
       questionId: question.id,
@@ -164,12 +164,12 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
 
       <View style={s.optionsRegion}>
         {currentQ.options.map((opt, i) => (
-          <TouchableOpacity 
-            key={i} 
+          <TouchableOpacity
+            key={i}
             style={[
-              s.optionBtn, 
+              s.optionBtn,
               selectedIdx === i && { borderColor: theme.primaryColor, backgroundColor: theme.primaryColor + '10' }
-            ]} 
+            ]}
             onPress={() => handleAnswer(i)}
             disabled={hasAnswered}
           >
@@ -195,15 +195,15 @@ const makeStyles = (theme: any, surface: string, textPrimary: string, textSecond
   statBox: { alignItems: 'center' },
   statLabel: { fontSize: 10, color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
   statValue: { fontSize: 20, fontWeight: '700', color: textPrimary },
-  timerCircle: { 
-    width: 64, height: 64, borderRadius: 32, 
+  timerCircle: {
+    width: 64, height: 64, borderRadius: 32,
     borderWidth: 4, borderColor: theme.primaryColor + '20',
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#fff',
   },
   timerText: { fontSize: 24, fontWeight: '800', color: theme.primaryColor },
-  qCard: { 
-    backgroundColor: '#fff', padding: 32, borderRadius: 24, 
+  qCard: {
+    backgroundColor: '#fff', padding: 32, borderRadius: 24,
     minHeight: 180, justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.05, shadowRadius: 20, elevation: 5,
@@ -211,14 +211,14 @@ const makeStyles = (theme: any, surface: string, textPrimary: string, textSecond
   },
   qText: { fontSize: 22, fontWeight: '700', color: textPrimary, textAlign: 'center', lineHeight: 32 },
   optionsRegion: { gap: 16 },
-  optionBtn: { 
-    flexDirection: 'row', alignItems: 'center', padding: 18, 
-    backgroundColor: '#fff', borderRadius: 16, 
+  optionBtn: {
+    flexDirection: 'row', alignItems: 'center', padding: 18,
+    backgroundColor: '#fff', borderRadius: 16,
     borderWidth: 2, borderColor: '#eee',
   },
-  optionCircle: { 
-    width: 32, height: 32, borderRadius: 16, 
-    borderWidth: 2, borderColor: '#eee', 
+  optionCircle: {
+    width: 32, height: 32, borderRadius: 16,
+    borderWidth: 2, borderColor: '#eee',
     alignItems: 'center', justifyContent: 'center',
     marginRight: 16,
   },

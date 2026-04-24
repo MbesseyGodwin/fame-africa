@@ -21,7 +21,7 @@ import ViewShot, { captureRef } from 'react-native-view-shot'
 import SponsorTicker from '../../components/SponsorTicker'
 import { LinearGradient } from 'expo-linear-gradient'
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:4000'
+const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://fameafrica-api.onrender.com'
 const { width, height } = Dimensions.get('window')
 
 // ─────────────────────────────────────────────────────────────

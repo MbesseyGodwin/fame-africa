@@ -21,26 +21,41 @@ export const streamingService = {
    * Generates an Agora RTC token for a user to join a channel.
    */
   async generateToken(channelName: string, userId: string, role: 'PUBLISHER' | 'SUBSCRIBER') {
-    const expirationTimeInSeconds = 3600 // 1 hour
-    const currentTimestamp = Math.floor(Date.now() / 1000)
-    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds
+    if (!AGORA_APP_ID || AGORA_APP_ID === 'agora_app_id_placeholder') {
+      logger.error('[StreamingService] Agora App ID is not configured')
+      throw new Error('Streaming service is not properly configured (Missing App ID)')
+    }
+    if (!AGORA_APP_CERTIFICATE || AGORA_APP_CERTIFICATE === 'agora_cert_placeholder') {
+      logger.error('[StreamingService] Agora App Certificate is not configured')
+      throw new Error('Streaming service is not properly configured (Missing Certificate)')
+    }
 
     const agoraRole = role === 'PUBLISHER' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER
+    const expirationTimeInSeconds = 3600 * 24 // 24 hours
+    const currentTimestamp = Math.floor(Date.now() / 1000)
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds
+    const uid = 0
 
-    // For Agora, uid can be a number or a string. We'll use a numeric hash of the userId for simplicity
-    const uid = 0 // In Agora, 0 means auto-assign if we don't care, but for tokens, consistency is key if needed. 
-    // Actually, we'll use a numeric hash or just 0 for testing.
-    
-    const token = RtcTokenBuilder.buildTokenWithUid(
-      AGORA_APP_ID,
-      AGORA_APP_CERTIFICATE,
-      channelName,
-      uid,
-      agoraRole,
-      privilegeExpiredTs
-    )
+    logger.info('[StreamingService] Generating Agora token', { 
+      channelName, 
+      role, 
+      appIdPrefix: AGORA_APP_ID.substring(0, 4) 
+    })
 
-    return token
+    try {
+      const token = RtcTokenBuilder.buildTokenWithUid(
+        AGORA_APP_ID,
+        AGORA_APP_CERTIFICATE,
+        channelName,
+        uid,
+        agoraRole,
+        privilegeExpiredTs
+      )
+      return token
+    } catch (error) {
+      logger.error('[StreamingService] Failed to generate Agora token', error)
+      throw new Error('Failed to generate streaming token')
+    }
   },
 
   /**

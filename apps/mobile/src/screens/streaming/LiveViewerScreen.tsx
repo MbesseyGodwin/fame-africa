@@ -32,65 +32,89 @@ export default function LiveViewerScreen() {
   const engine = useRef<IRtcEngine | null>(null)
 
   const [loading, setLoading] = useState(true)
+  const [loadingStatus, setLoadingStatus] = useState('Connecting to Virtual House...')
   const [remoteUid, setRemoteUid] = useState<number | null>(null)
   const [comments, setComments] = useState<any[]>([])
   const [commentText, setCommentText] = useState('')
   const [streamInfo, setStreamInfo] = useState<any>(null)
 
   useEffect(() => {
+    console.log('[LiveViewer] Mounting screen, streamId:', streamId)
     init()
     return () => {
-      engine.current?.leaveChannel()
-      engine.current?.release()
+      console.log('[LiveViewer] Unmounting screen, cleaning up engine')
+      if (engine.current) {
+        engine.current.leaveChannel()
+        engine.current.release()
+      }
     }
   }, [])
 
   const init = async () => {
     try {
       // 1. Fetch stream info
-      const res = await streamingApi.listLive() // Ideal: getOneStream(streamId)
+      console.log('[LiveViewer] Fetching stream info...')
+      setLoadingStatus('Finding live session...')
+      const res = await streamingApi.listLive() 
       const stream = res.data.data.find((s: any) => s.id === streamId)
+      
       if (!stream) {
-        Alert.alert('Error', 'Stream no longer active')
+        console.error('[LiveViewer] Stream not found or inactive')
+        Alert.alert('Stream Ended', 'This live session is no longer active.')
         router.back()
         return
       }
       setStreamInfo(stream)
+      console.log('[LiveViewer] Stream info found, channel:', stream.channelName)
 
       // 2. Get Agora Token
+      console.log('[LiveViewer] Fetching Agora token...')
+      setLoadingStatus('Fetching secure token...')
       const tokenRes = await streamingApi.getToken(stream.channelName, 'SUBSCRIBER')
       const token = tokenRes.data.data.token
+      console.log('[LiveViewer] Token received')
 
       // 3. Initialize Engine
+      console.log('[LiveViewer] Initializing Agora engine with ID:', AGORA_APP_ID)
+      setLoadingStatus('Initializing engine...')
       engine.current = createAgoraRtcEngine()
       engine.current.initialize({ appId: AGORA_APP_ID })
 
       engine.current.registerEventHandler({
         onJoinChannelSuccess: (connection, elapsed) => {
-          console.log('Successfully joined channel', connection.channelId)
+          console.log('[LiveViewer] Successfully joined channel:', connection.channelId)
           setLoading(false)
         },
-        onUserJoined: (connection, remoteUid, elapsed) => {
-          console.log('Remote user joined', remoteUid)
+        onUserJoined: (connection, remoteUid) => {
+          console.log('[LiveViewer] Host (Remote User) joined:', remoteUid)
           setRemoteUid(remoteUid)
         },
         onUserOffline: (connection, remoteUid, reason) => {
-          console.log('Remote user offline', remoteUid)
+          console.log('[LiveViewer] Host (Remote User) went offline:', remoteUid, 'Reason:', reason)
           setRemoteUid(null)
           Alert.alert('Stream Ended', 'The host has ended the broadcast.')
           router.back()
+        },
+        onError: (err, msg) => {
+          console.error('[LiveViewer] Agora error:', err, msg)
+          Alert.alert('Connection Error', `Failed to connect to stream. Code: ${err}\n${msg || ''}`)
+          setLoading(false)
         }
       })
 
+      console.log('[LiveViewer] Setting up audience role...')
       engine.current.enableVideo()
       engine.current.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting)
       engine.current.setClientRole(ClientRoleType.ClientRoleAudience)
 
       // 4. Join Channel
+      console.log('[LiveViewer] Joining channel...')
+      setLoadingStatus('Joining live channel...')
       engine.current.joinChannel(token, stream.channelName, 0, {})
 
-    } catch (error) {
-      console.error('Failed to init Agora', error)
+    } catch (error: any) {
+      console.error('[LiveViewer] Initialization failed:', error)
+      Alert.alert('Error', error.message || 'Failed to connect to the live stream')
       setLoading(false)
     }
   }
@@ -133,7 +157,7 @@ export default function LiveViewerScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FE2C55" />
-        <Text style={styles.loadingText}>Connecting to Virtual House...</Text>
+        <Text style={styles.loadingText}>{loadingStatus}</Text>
       </View>
     )
   }

@@ -2,7 +2,7 @@
 
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fameafrica-api.onrender.com/api/v1'
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -59,7 +59,7 @@ api.interceptors.response.use(
         const { data } = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken })
         const newAccessToken = data.data.accessToken
         localStorage.setItem('accessToken', newAccessToken)
-        
+
         isRefreshing = false
         onRefreshed(newAccessToken)
 
@@ -70,11 +70,11 @@ api.interceptors.response.use(
         refreshSubscribers = []
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
-        
+
         if (typeof window !== 'undefined') {
           const path = window.location.pathname
           const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/admin')
-          
+
           if (isProtectedRoute && path !== '/auth/login') {
             window.location.href = '/auth/login'
           }
