@@ -3,13 +3,44 @@
 import { prisma } from '../../index';
 import { logger } from '../../utils/logger';
 import { MerkleTree, generateVoteHash } from '../../utils/merkle';
-import { createWalletClient, http, publicActions, toHex } from 'viem';
+import { createWalletClient, http, publicActions, toHex, defineChain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia } from 'viem/chains/definitions/baseSepolia';
-import { mainnet } from 'viem/chains/definitions/mainnet';
-import { polygon } from 'viem/chains/definitions/polygon';
-import { optimism } from 'viem/chains/definitions/optimism';
-import { arbitrum } from 'viem/chains/definitions/arbitrum';
+
+// Manual chain definitions to bypass broken viem/chains index
+const baseSepolia = defineChain({
+  id: 84532,
+  name: 'Base Sepolia',
+  nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: { default: { http: ['https://sepolia.base.org'] } },
+});
+
+const mainnet = defineChain({
+  id: 1,
+  name: 'Ethereum',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: { default: { http: ['https://cloudflare-eth.com'] } },
+});
+
+const polygon = defineChain({
+  id: 137,
+  name: 'Polygon',
+  nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+  rpcUrls: { default: { http: ['https://polygon-rpc.com'] } },
+});
+
+const optimism = defineChain({
+  id: 10,
+  name: 'OP Mainnet',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: { default: { http: ['https://mainnet.optimism.io'] } },
+});
+
+const arbitrum = defineChain({
+  id: 42161,
+  name: 'Arbitrum One',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: { default: { http: ['https://arb1.arbitrum.io/rpc'] } },
+});
 
 const COMMON_CHAINS: Record<number, any> = {
   [baseSepolia.id]: baseSepolia,
