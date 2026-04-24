@@ -136,7 +136,7 @@ export default function LiveHostScreen() {
       // Audio Improvements: Noise suppression and High Quality voice
       engine.current.setAudioProfile(
         AudioProfileType.AudioProfileMusicStandard,
-        AudioScenarioType.AudioScenarioChatroomEntertainment
+        AudioScenarioType.AudioScenarioChatroom
       )
       engine.current.enableAudioVolumeIndication(200, 3, true)
 
