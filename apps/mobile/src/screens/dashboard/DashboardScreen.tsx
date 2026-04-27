@@ -293,23 +293,29 @@ export default function DashboardScreen() {
           )}
 
 
-          {/* ── Top nav: back  |  brand  |  edit ── */}
-          <View style={[s.heroNavSection,]}>
+          {/* ── Top actions: Stream | Gallery | Edit ── */}
+          <View style={[s.heroNavSection]}>
             <ActionButton
               icon="videocam"
-              label="Go Live (Stream)"
+              label="Go Live"
               color="#FE2C55"
               onPress={() => router.push('/streaming/host')}
             />
 
+            {/* stream history */}
             <ActionButton
               icon="time"
-              label="Stream History"
+              label="History"
               color="rgba(0,0,0,0.5)"
               onPress={() => router.push('/streaming/history')}
             />
 
-
+            <ActionButton
+              icon="images"
+              label="Gallery"
+              color="#534AB7"
+              onPress={() => router.push(`/vote/${participant.voteLinkSlug}`)}
+            />
 
             <TouchableOpacity
               onPress={() => router.push('/participants/edit-profile')}
@@ -320,163 +326,163 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* ── Live Arena Banner ──────────────────────── */}
-          {liveArena && (
-            <TouchableOpacity
-              onPress={() => router.push(`/arena/${liveArena.id}`)}
-              style={s.arenaBanner}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={[C.accent, '#FF5F7E']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={s.arenaBannerInner}
+            {/* ── Live Arena Banner ──────────────────────── */}
+            {liveArena && (
+              <TouchableOpacity
+                onPress={() => router.push(`/arena/${liveArena.id}`)}
+                style={s.arenaBanner}
+                activeOpacity={0.88}
               >
-                <View style={s.arenaPulse} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.arenaBannerEye}>LIVE ARENA IN PROGRESS</Text>
-                  <Text style={s.arenaBannerTitle} numberOfLines={1}>{liveArena.title}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-
-          {/* ── Today's Votes ──────────────────────────── */}
-          <Text style={s.sectionTitle}>Today's Performance</Text>
-          <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
-            {/* Accent top stripe */}
-            <LinearGradient colors={[C.accent, '#FF5F7E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 4 }} />
-            <View style={s.todayBody}>
-              {/* Big vote number */}
-              <View style={s.todayLeft}>
-                <View style={s.liveChip}>
+                <LinearGradient
+                  colors={[C.accent, '#FF5F7E']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={s.arenaBannerInner}
+                >
                   <View style={s.arenaPulse} />
-                  <Text style={s.liveChipText}>LIVE COUNT</Text>
-                </View>
-                <Text style={s.todayNum}>{displayTodayVotes.toLocaleString()}</Text>
-                <Text style={s.todayNumSub}>votes today</Text>
-              </View>
-
-              {/* Vertical rule */}
-              <View style={s.todaySep} />
-
-              {/* Right-side secondary stats */}
-              <View style={s.todayRight}>
-                {[
-                  { label: 'All-time votes', value: (participant.totalVotes || 0).toLocaleString(), color: C.ink },
-                  { label: 'Current rank', value: `#${currentRank}`, color: C.gold },
-                  { label: 'Competitors', value: (activeParticipants || 0).toLocaleString(), color: C.ink },
-                ].map((stat, i) => (
-                  <View key={i} style={s.todayRStat}>
-                    <Text style={[s.todayRNum, { color: stat.color }]}>{stat.value}</Text>
-                    <Text style={s.todayRLabel}>{stat.label}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.arenaBannerEye}>LIVE ARENA IN PROGRESS</Text>
+                    <Text style={s.arenaBannerTitle} numberOfLines={1}>{liveArena.title}</Text>
                   </View>
-                ))}
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {/* ── Today's Votes ──────────────────────────── */}
+            <Text style={s.sectionTitle}>Today's Performance</Text>
+            <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
+              {/* Accent top stripe */}
+              <LinearGradient colors={[C.accent, '#FF5F7E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 4 }} />
+              <View style={s.todayBody}>
+                {/* Big vote number */}
+                <View style={s.todayLeft}>
+                  <View style={s.liveChip}>
+                    <View style={s.arenaPulse} />
+                    <Text style={s.liveChipText}>LIVE COUNT</Text>
+                  </View>
+                  <Text style={s.todayNum}>{displayTodayVotes.toLocaleString()}</Text>
+                  <Text style={s.todayNumSub}>votes today</Text>
+                </View>
+
+                {/* Vertical rule */}
+                <View style={s.todaySep} />
+
+                {/* Right-side secondary stats */}
+                <View style={s.todayRight}>
+                  {[
+                    { label: 'All-time votes', value: (participant.totalVotes || 0).toLocaleString(), color: C.ink },
+                    { label: 'Current rank', value: `#${currentRank}`, color: C.gold },
+                    { label: 'Competitors', value: (activeParticipants || 0).toLocaleString(), color: C.ink },
+                  ].map((stat, i) => (
+                    <View key={i} style={s.todayRStat}>
+                      <Text style={[s.todayRNum, { color: stat.color }]}>{stat.value}</Text>
+                      <Text style={s.todayRLabel}>{stat.label}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
+            </Card>
+
+            {/* ── Arena Performance ──────────────────────── */}
+            <View style={s.arenaStatRow}>
+              {[
+                { icon: 'trophy', color: C.gold, bg: '#FFFBEB', value: participant.arenaWins || 0, label: 'Arena Wins' },
+                {
+                  icon: 'warning', color: participant.totalStrikes > 0 ? '#EF4444' : C.green,
+                  bg: participant.totalStrikes > 0 ? '#FEF2F2' : '#F0FDF4',
+                  value: participant.totalStrikes || 0, label: 'Strikes'
+                },
+                { icon: 'people', color: C.blue, bg: '#EFF6FF', value: activeParticipants || '—', label: 'In Arena' },
+              ].map((item, i) => (
+                <Card key={i} style={[s.arenaCard, i < 2 ? { marginRight: 10 } : {}]}>
+                  <View style={[s.arenaIconCircle, { backgroundColor: item.bg }]}>
+                    <Ionicons name={item.icon as any} size={22} color={item.color} />
+                  </View>
+                  <Text style={[s.arenaNum, { color: item.color }]}>{item.value}</Text>
+                  <Text style={s.arenaLabel}>{item.label}</Text>
+                </Card>
+              ))}
             </View>
-          </Card>
 
-          {/* ── Arena Performance ──────────────────────── */}
-          <View style={s.arenaStatRow}>
-            {[
-              { icon: 'trophy', color: C.gold, bg: '#FFFBEB', value: participant.arenaWins || 0, label: 'Arena Wins' },
-              {
-                icon: 'warning', color: participant.arenaStrikes > 0 ? '#EF4444' : C.green,
-                bg: participant.arenaStrikes > 0 ? '#FEF2F2' : '#F0FDF4',
-                value: `${participant.arenaStrikes || 0}/3`, label: 'Strikes'
-              },
-              { icon: 'people', color: C.blue, bg: '#EFF6FF', value: activeParticipants || '—', label: 'In Arena' },
-            ].map((item, i) => (
-              <Card key={i} style={[s.arenaCard, i < 2 ? { marginRight: 10 } : {}]}>
-                <View style={[s.arenaIconCircle, { backgroundColor: item.bg }]}>
-                  <Ionicons name={item.icon as any} size={22} color={item.color} />
-                </View>
-                <Text style={[s.arenaNum, { color: item.color }]}>{item.value}</Text>
-                <Text style={s.arenaLabel}>{item.label}</Text>
-              </Card>
-            ))}
-          </View>
-
-          {/* ── Vote Trend ─────────────────────────────── */}
-          {tallies.length > 0 && (
-            <>
-              <Text style={s.sectionTitle}>7-Day Vote Trend</Text>
-              <Card style={{ marginBottom: 24 }}>
-                <View style={s.chartBars}>
-                  {tallies.slice(-7).map((t: any, i: number, arr: any[]) => {
-                    const pct = (t.voteCount / maxBar) * 100
-                    const isToday = i === arr.length - 1
-                    return (
-                      <View key={i} style={s.barCol}>
-                        {t.voteCount > 0 && <Text style={s.barCount}>{t.voteCount}</Text>}
-                        <View style={s.barTrack}>
-                          <LinearGradient
-                            colors={isToday ? [C.accent, '#FF8FA3'] : ['#D1D5DB', '#E5E7EB']}
-                            style={[s.barFill, { height: `${Math.max(pct, 6)}%` }]}
-                          />
+            {/* ── Vote Trend ─────────────────────────────── */}
+            {tallies.length > 0 && (
+              <>
+                <Text style={s.sectionTitle}>7-Day Vote Trend</Text>
+                <Card style={{ marginBottom: 24 }}>
+                  <View style={s.chartBars}>
+                    {tallies.slice(-7).map((t: any, i: number, arr: any[]) => {
+                      const pct = (t.voteCount / maxBar) * 100
+                      const isToday = i === arr.length - 1
+                      return (
+                        <View key={i} style={s.barCol}>
+                          {t.voteCount > 0 && <Text style={s.barCount}>{t.voteCount}</Text>}
+                          <View style={s.barTrack}>
+                            <LinearGradient
+                              colors={isToday ? [C.accent, '#FF8FA3'] : ['#D1D5DB', '#E5E7EB']}
+                              style={[s.barFill, { height: `${Math.max(pct, 6)}%` }]}
+                            />
+                          </View>
+                          <Text style={s.barLabel}>
+                            {new Date(t.date).toLocaleDateString('en', { weekday: 'short' }).slice(0, 3)}
+                          </Text>
                         </View>
-                        <Text style={s.barLabel}>
-                          {new Date(t.date).toLocaleDateString('en', { weekday: 'short' }).slice(0, 3)}
-                        </Text>
-                      </View>
-                    )
-                  })}
-                </View>
-              </Card>
-            </>
-          )}
-
-          {/* ── Sponsors ───────────────────────────────── */}
-          <SponsorTicker cycleId={participant.cycleId} />
-
-          {/* ── Contestant Pass ────────────────────────── */}
-          <Text style={s.sectionTitle}>Official Contestant Pass</Text>
-          <Text style={s.sectionSub}>
-            Share this card anywhere — scanning the QR takes fans straight to your vote page.
-          </Text>
-
-          <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
-            <View style={s.passCard}>
-              {/* Dark header stripe */}
-              <LinearGradient colors={[C.ink, '#1C1C2E']} style={s.passHeader}>
-                <Text style={s.passHeaderBrand}>FAME AFRICA</Text>
-                <View style={s.passStatusPill}>
-                  <View style={[s.arenaPulse, { backgroundColor: C.green, width: 6, height: 6 }]} />
-                  <Text style={[s.passStatusText, { color: C.green }]}>
-                    {cycle?.status?.replace(/_/g, ' ') || 'ACTIVE'}
-                  </Text>
-                </View>
-              </LinearGradient>
-
-              {/* White body */}
-              <View style={s.passBody}>
-                {/* Left: avatar + name */}
-                <View style={s.passLeft}>
-                  {participant.campaignCardUrl ? (
-                    <Image source={{ uri: participant.campaignCardUrl }} style={s.passAvatar} resizeMode="cover" />
-                  ) : (
-                    <LinearGradient colors={[C.accent, '#FF8FA3']} style={[s.passAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
-                      <Ionicons name="person" size={36} color="#fff" />
-                    </LinearGradient>
-                  )}
-                  <Text style={s.passName} numberOfLines={2}>{participant.displayName}</Text>
-                  <View style={s.passCatPill}>
-                    <Text style={s.passCatText}>{participant.category}</Text>
+                      )
+                    })}
                   </View>
-                  {/* <Text style={[s.passRankText, { color: C.gold }]}>Rank #{currentRank}</Text> */}
-                </View>
+                </Card>
+              </>
+            )}
 
-                {/* Dashed divider */}
-                <View style={s.passDivider} />
+            {/* ── Sponsors ───────────────────────────────── */}
+            <SponsorTicker cycleId={participant.cycleId} />
 
-                {/* Right: QR + meta */}
-                <View style={s.passRight}>
-                  <View style={s.qrWrap}>
-                    <QRCode value={voteLink} size={width * 0.33} color={C.ink} backgroundColor="#fff" />
+            {/* ── Contestant Pass ────────────────────────── */}
+            <Text style={s.sectionTitle}>Official Contestant Pass</Text>
+            <Text style={s.sectionSub}>
+              Share this card anywhere — scanning the QR takes fans straight to your vote page.
+            </Text>
+
+            <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
+              <View style={s.passCard}>
+                {/* Dark header stripe */}
+                <LinearGradient colors={[C.ink, '#1C1C2E']} style={s.passHeader}>
+                  <Text style={s.passHeaderBrand}>FAME AFRICA</Text>
+                  <View style={s.passStatusPill}>
+                    <View style={[s.arenaPulse, { backgroundColor: C.green, width: 6, height: 6 }]} />
+                    <Text style={[s.passStatusText, { color: C.green }]}>
+                      {cycle?.status?.replace(/_/g, ' ') || 'ACTIVE'}
+                    </Text>
                   </View>
-                  <Text style={s.qrScanLabel}>SCAN TO VOTE</Text>
-                  {/* <View style={{ marginTop: 10, gap: 6, width: '100%' }}>
+                </LinearGradient>
+
+                {/* White body */}
+                <View style={s.passBody}>
+                  {/* Left: avatar + name */}
+                  <View style={s.passLeft}>
+                    {participant.campaignCardUrl ? (
+                      <Image source={{ uri: participant.campaignCardUrl }} style={s.passAvatar} resizeMode="cover" />
+                    ) : (
+                      <LinearGradient colors={[C.accent, '#FF8FA3']} style={[s.passAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                        <Ionicons name="person" size={36} color="#fff" />
+                      </LinearGradient>
+                    )}
+                    <Text style={s.passName} numberOfLines={2}>{participant.displayName}</Text>
+                    <View style={s.passCatPill}>
+                      <Text style={s.passCatText}>{participant.category}</Text>
+                    </View>
+                    {/* <Text style={[s.passRankText, { color: C.gold }]}>Rank #{currentRank}</Text> */}
+                  </View>
+
+                  {/* Dashed divider */}
+                  <View style={s.passDivider} />
+
+                  {/* Right: QR + meta */}
+                  <View style={s.passRight}>
+                    <View style={s.qrWrap}>
+                      <QRCode value={voteLink} size={width * 0.33} color={C.ink} backgroundColor="#fff" />
+                    </View>
+                    <Text style={s.qrScanLabel}>SCAN TO VOTE</Text>
+                    {/* <View style={{ marginTop: 10, gap: 6, width: '100%' }}>
                     {[
                       { k: 'ID', v: participant.voteLinkSlug },
                       { k: 'VOTES', v: (participant.totalVotes || 0).toLocaleString() },
@@ -487,60 +493,60 @@ export default function DashboardScreen() {
                       </View>
                     ))}
                   </View> */}
+                  </View>
+                </View>
+
+                {/* Ticket tear perforation */}
+                <View style={s.tearLine}>
+                  <View style={s.tearHole} />
+                  {Array.from({ length: 22 }).map((_, i) => <View key={i} style={s.tearDot} />)}
+                  <View style={[s.tearHole, { right: -10, left: undefined }]} />
+                </View>
+
+                {/* Footer */}
+                <View style={s.passFooter}>
+                  <Text style={s.passFooterText}>
+                    {cycle?.cycleName || 'Active Cycle'} · {(participant.totalVotes || 0).toLocaleString()} total votes
+                  </Text>
                 </View>
               </View>
+            </ViewShot>
 
-              {/* Ticket tear perforation */}
-              <View style={s.tearLine}>
-                <View style={s.tearHole} />
-                {Array.from({ length: 22 }).map((_, i) => <View key={i} style={s.tearDot} />)}
-                <View style={[s.tearHole, { right: -10, left: undefined }]} />
-              </View>
-
-              {/* Footer */}
-              <View style={s.passFooter}>
-                <Text style={s.passFooterText}>
-                  {cycle?.cycleName || 'Active Cycle'} · {(participant.totalVotes || 0).toLocaleString()} total votes
-                </Text>
-              </View>
-            </View>
-          </ViewShot>
-
-          <TouchableOpacity onPress={shareQRCard} disabled={capturing} activeOpacity={0.85} style={{ marginTop: 14, marginBottom: 28 }}>
-            <LinearGradient colors={[C.ink, '#333']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.shareBtn}>
-              {capturing
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <>
-                  <Ionicons name="share-social" size={20} color="#fff" />
-                  <Text style={s.shareBtnText}>Share Contestant Pass</Text>
-                </>
-              }
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* ── Mobilization Link ──────────────────────── */}
-          <Text style={s.sectionTitle}>Your Mobilization Link</Text>
-          <Text style={s.sectionSub}>
-            Send this to friends, share on WhatsApp Status, Instagram Stories — every click is a potential vote.
-          </Text>
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <View style={s.linkRow}>
-              <Ionicons name="link-outline" size={16} color={C.inkLight} />
-              <Text style={s.linkText} numberOfLines={1}>{voteLink}</Text>
-            </View>
-            <TouchableOpacity
-              onPress={copyLink}
-              style={[s.copyRow, { backgroundColor: linkCopied ? '#ECFDF5' : C.accentSoft }]}
-              activeOpacity={0.8}
-            >
-              <Ionicons name={linkCopied ? 'checkmark-circle' : 'copy-outline'} size={18} color={linkCopied ? C.green : C.accent} />
-              <Text style={[s.copyText, { color: linkCopied ? C.green : C.accent }]}>
-                {linkCopied ? 'Copied to clipboard!' : 'Tap to copy link'}
-              </Text>
+            <TouchableOpacity onPress={shareQRCard} disabled={capturing} activeOpacity={0.85} style={{ marginTop: 14, marginBottom: 28 }}>
+              <LinearGradient colors={[C.ink, '#333']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.shareBtn}>
+                {capturing
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <>
+                    <Ionicons name="share-social" size={20} color="#fff" />
+                    <Text style={s.shareBtnText}>Share Contestant Pass</Text>
+                  </>
+                }
+              </LinearGradient>
             </TouchableOpacity>
-          </Card>
 
-        </View>
+            {/* ── Mobilization Link ──────────────────────── */}
+            <Text style={s.sectionTitle}>Your Mobilization Link</Text>
+            <Text style={s.sectionSub}>
+              Send this to friends, share on WhatsApp Status, Instagram Stories — every click is a potential vote.
+            </Text>
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+              <View style={s.linkRow}>
+                <Ionicons name="link-outline" size={16} color={C.inkLight} />
+                <Text style={s.linkText} numberOfLines={1}>{voteLink}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={copyLink}
+                style={[s.copyRow, { backgroundColor: linkCopied ? '#ECFDF5' : C.accentSoft }]}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={linkCopied ? 'checkmark-circle' : 'copy-outline'} size={18} color={linkCopied ? C.green : C.accent} />
+                <Text style={[s.copyText, { color: linkCopied ? C.green : C.accent }]}>
+                  {linkCopied ? 'Copied to clipboard!' : 'Tap to copy link'}
+                </Text>
+              </TouchableOpacity>
+            </Card>
+
+          </View>
       </ScrollView>
     </View>
   )

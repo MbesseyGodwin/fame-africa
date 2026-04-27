@@ -8,10 +8,14 @@ import { adminApi } from '../../../lib/api'
 function CycleCard({ cycle, statusMutation, queryClient }: { cycle: any, statusMutation: any, queryClient: any }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({
+    cycleName: cycle.cycleName || '',
+    cycleNumber: cycle.cycleNumber || 1,
+    registrationFee: cycle.registrationFee || 5000,
     registrationOpen: new Date(cycle.registrationOpen).toISOString().slice(0, 16),
     registrationClose: new Date(cycle.registrationClose).toISOString().slice(0, 16),
     votingOpen: new Date(cycle.votingOpen).toISOString().slice(0, 16),
     votingClose: new Date(cycle.votingClose).toISOString().slice(0, 16),
+    revealAt: cycle.revealAt ? new Date(cycle.revealAt).toISOString().slice(0, 16) : new Date(cycle.votingClose).toISOString().slice(0, 16),
   })
 
   const updateMutation = useMutation({
@@ -31,10 +35,14 @@ function CycleCard({ cycle, statusMutation, queryClient }: { cycle: any, statusM
 
   const handleSave = () => {
     updateMutation.mutate({
+      cycleName: editData.cycleName,
+      cycleNumber: Number(editData.cycleNumber),
+      registrationFee: Number(editData.registrationFee),
       registrationOpen: new Date(editData.registrationOpen).toISOString(),
       registrationClose: new Date(editData.registrationClose).toISOString(),
       votingOpen: new Date(editData.votingOpen).toISOString(),
       votingClose: new Date(editData.votingClose).toISOString(),
+      revealAt: new Date(editData.revealAt).toISOString(),
     })
   }
 
@@ -49,9 +57,27 @@ function CycleCard({ cycle, statusMutation, queryClient }: { cycle: any, statusM
       {cycle.status === 'VOTING_OPEN' && <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-bl-full" />}
 
       <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white text-[16px]">{cycle.cycleName}</h3>
-          <p className="text-xs text-gray-500">Season {cycle.cycleNumber}</p>
+        <div className="flex-1 mr-4">
+          {!isEditing ? (
+            <>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-[16px]">{cycle.cycleName}</h3>
+              <p className="text-xs text-gray-500">Season {cycle.cycleNumber} • Fee: ₦{cycle.registrationFee || 5000}</p>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2 mb-2 w-full">
+              <input type="text" value={editData.cycleName} onChange={e => setEditData({...editData, cycleName: e.target.value})} className="font-semibold text-[16px] border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 dark:text-white dark:border-gray-700" placeholder="Cycle Name" />
+              <div className="flex gap-2">
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-gray-400">Season</label>
+                  <input type="number" value={editData.cycleNumber} onChange={e => setEditData({...editData, cycleNumber: Number(e.target.value)})} className="text-xs border rounded px-2 py-1 w-16 bg-white dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700" title="Cycle Number" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-gray-400">Fee (₦)</label>
+                  <input type="number" value={editData.registrationFee} onChange={e => setEditData({...editData, registrationFee: Number(e.target.value)})} className="text-xs border rounded px-2 py-1 w-24 bg-white dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700" title="Registration Fee" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -91,47 +117,85 @@ function CycleCard({ cycle, statusMutation, queryClient }: { cycle: any, statusM
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/30">
               <div className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-medium mb-2">Edit Registration</div>
-              <input type="datetime-local" value={editData.registrationOpen} onChange={e => setEditData({...editData, registrationOpen: e.target.value})} className="w-full text-xs px-2 py-1 mb-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" />
-              <input type="datetime-local" value={editData.registrationClose} onChange={e => setEditData({...editData, registrationClose: e.target.value})} className="w-full text-xs px-2 py-1 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" />
+              <input type="datetime-local" value={editData.registrationOpen} onChange={e => setEditData({...editData, registrationOpen: e.target.value})} className="w-full text-xs px-2 py-1 mb-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" title="Registration Open" />
+              <input type="datetime-local" value={editData.registrationClose} onChange={e => setEditData({...editData, registrationClose: e.target.value})} className="w-full text-xs px-2 py-1 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" title="Registration Close" />
             </div>
             <div className="p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-100 dark:border-green-900/30">
-              <div className="text-[10px] text-green-600 dark:text-green-400 uppercase font-medium mb-2">Edit Voting</div>
-              <input type="datetime-local" value={editData.votingOpen} onChange={e => setEditData({...editData, votingOpen: e.target.value})} className="w-full text-xs px-2 py-1 mb-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" />
-              <input type="datetime-local" value={editData.votingClose} onChange={e => setEditData({...editData, votingClose: e.target.value})} className="w-full text-xs px-2 py-1 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" />
+              <div className="text-[10px] text-green-600 dark:text-green-400 uppercase font-medium mb-2">Edit Voting & Reveal</div>
+              <input type="datetime-local" value={editData.votingOpen} onChange={e => setEditData({...editData, votingOpen: e.target.value})} className="w-full text-xs px-2 py-1 mb-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" title="Voting Open" />
+              <input type="datetime-local" value={editData.votingClose} onChange={e => setEditData({...editData, votingClose: e.target.value})} className="w-full text-xs px-2 py-1 mb-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" title="Voting Close" />
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-gray-500">Reveal:</span>
+                <input type="datetime-local" value={editData.revealAt} onChange={e => setEditData({...editData, revealAt: e.target.value})} className="w-full text-xs px-2 py-1 border rounded bg-white dark:bg-gray-900 dark:border-gray-700" title="Reveal At" />
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
-        <button 
-          onClick={handleDelete}
-          disabled={deleteMutation.isPending}
-          className="text-xs text-red-500 hover:text-red-600 font-medium disabled:opacity-50"
-        >
-          {deleteMutation.isPending ? 'Deleting...' : 'Delete Cycle'}
-        </button>
+      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <button
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            className="text-xs text-red-500 hover:text-red-600 font-medium disabled:opacity-50"
+          >
+            {deleteMutation.isPending ? 'Deleting...' : 'Delete Cycle'}
+          </button>
 
-        <div className="flex gap-2">
-          {isEditing ? (
-            <>
-              <button onClick={() => setIsEditing(false)} className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700">Cancel</button>
-              <button 
-                onClick={handleSave} 
-                disabled={updateMutation.isPending}
-                className="text-xs text-white bg-primary px-3 py-1.5 rounded hover:bg-primary-dark disabled:opacity-50 font-medium"
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <button onClick={() => setIsEditing(false)} className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700">Cancel</button>
+                <button
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending}
+                  className="text-xs text-white bg-primary px-3 py-1.5 rounded hover:bg-primary-dark disabled:opacity-50 font-medium"
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 font-medium"
               >
-                {updateMutation.isPending ? 'Saving...' : 'Save Dates'}
+                Edit Cycle
               </button>
-            </>
-          ) : (
-            <button 
-              onClick={() => setIsEditing(true)} 
-              className="text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 font-medium"
+            )}
+          </div>
+        </div>
+
+        {/* God Mode Section */}
+        <div className="bg-orange-50/50 dark:bg-orange-900/5 p-3 rounded-lg border border-orange-100 dark:border-orange-900/20">
+          <div className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.9L9.03 9.122a2 2 0 001.938 0l6.865-4.222a2 2 0 00-1.04-3.778H3.205a2 2 0 00-1.039 3.778zM19.937 9.122a2 2 0 010 3.756l-9.03 5.51a2 2 0 01-1.814 0l-9.03-5.51a2 2 0 010-3.756l9.03 5.51a2 2 0 011.814 0l9.03-5.51z" clipRule="evenodd" /></svg>
+            Advanced Controls (God Mode)
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                const status = window.prompt('Force status to (e.g. COMPLETED, REVEALING, VOTING_OPEN):', cycle.status)
+                if (status) {
+                  adminApi.forceCycleStatus(cycle.id, status).then(() => queryClient.invalidateQueries({ queryKey: ['admin_cycles'] }))
+                }
+              }}
+              className="text-[10px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-800 hover:border-orange-300 transition-all shadow-sm"
             >
-              Edit Dates
+              Force Status
             </button>
-          )}
+            <button
+              onClick={() => {
+                const pId = window.prompt('Enter Participant ID to declare as winner:')
+                if (pId) {
+                  adminApi.forceWinner(cycle.id, pId).then(() => queryClient.invalidateQueries({ queryKey: ['admin_cycles'] }))
+                }
+              }}
+              className="text-[10px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-800 hover:border-orange-300 transition-all shadow-sm"
+            >
+              Force Winner
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, RefreshControl, ActivityIndicator, Dimensions
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../context/ThemeContext'
@@ -14,6 +15,7 @@ import { useAuth } from '../../context/AuthContext'
 import { streamingApi } from '../../utils/api'
 import LiveStreamCard from '../../components/LiveStreamCard'
 import ReplayCard from '../../components/ReplayCard'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 
 const { width } = Dimensions.get('window')
 
@@ -21,6 +23,7 @@ export default function HomeScreen() {
   const { theme, updateTheme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const { user } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [refreshing, setRefreshing] = useState(false)
 
   const { data: cycleRes, refetch: refetchCycle } = useQuery({
@@ -77,7 +80,7 @@ export default function HomeScreen() {
     setRefreshing(false)
   }
 
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -235,26 +238,52 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Quick Links */}
+        {/* Quick Links Section */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 12 }}>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary }}>Explore FameAfrica</Text>
+          <InfoTooltip 
+            title="What's FameAfrica?" 
+            content="FameAfrica is the continent's premier digital talent competition. Watch live streams, vote for your favorite contestants, participate in head-to-head battles, and help your favorites win amazing prizes!" 
+          />
+        </View>
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/how-it-works')}>
-            <Ionicons name="information-circle-outline" size={24} color={theme.primaryColor} />
-            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>How it works</Text>
+          <TouchableOpacity 
+            style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0, backgroundColor: theme.primaryColor + '15' }]} 
+            onPress={() => router.push('/(tabs)/participants')}
+          >
+            <Ionicons name="people" size={24} color={theme.primaryColor} />
+            <Text style={{ fontSize: 13, fontWeight: '700', marginTop: 8, color: theme.primaryColor }}>VOTE NOW</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/winners')}>
-            <Ionicons name="trophy-outline" size={24} color="#D4AF37" />
-            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Past Winners</Text>
+          <TouchableOpacity 
+            style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} 
+            onPress={() => router.push('/(tabs)/leaderboard')}
+          >
+            <Ionicons name="trophy" size={24} color="#D4AF37" />
+            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Rankings</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Quick Links Row 2 */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/(tabs)/results')}>
+            <Ionicons name="stats-chart" size={24} color="#10B981" />
+            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Final Results</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/how-it-works')}>
+            <Ionicons name="information-circle-outline" size={24} color="#6366F1" />
+            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>How it works</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Links Row 3 */}
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/streaming/replays')}>
-            <Ionicons name="videocam-outline" size={24} color="#FE2C55" />
-            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Watch Replays</Text>
+          <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/winners')}>
+            <Ionicons name="medal-outline" size={24} color="#F59E0B" />
+            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Past Winners</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} onPress={() => router.push('/about')}>
             <Ionicons name="shield-checkmark-outline" size={24} color="#0369A1" />
-            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Arena Rules</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, color: textPrimary }}>Rules</Text>
           </TouchableOpacity>
         </View>
 
@@ -285,7 +314,7 @@ export default function HomeScreen() {
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: bg },
     content: { padding: 16, paddingBottom: 32 },
@@ -369,7 +398,9 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     outPillText: { color: '#A32D2D', fontSize: 10, fontWeight: '500' },
     topHeader: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
+      paddingHorizontal: 20, 
+      paddingTop: insets.top || 20, 
+      paddingBottom: 16,
       backgroundColor: surface,
     },
     brand: { fontSize: 22, fontWeight: '700', color: theme.primaryColor },

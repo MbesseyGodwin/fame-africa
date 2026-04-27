@@ -2,6 +2,8 @@
 
 import { Request, Response } from 'express'
 import { streamingService } from './streaming.service'
+import { logger } from '../../utils/logger'
+import { prisma } from '../../lib/prisma'
 
 export const streamingController = {
   /**
@@ -70,29 +72,115 @@ export const streamingController = {
         data: streams
       })
     } catch (error: any) {
+      console.error(`[StreamingController] listLive failed: ${error.message}`)
       return res.status(500).json({ success: false, message: error.message })
     }
   },
 
   /**
-   * Webhook called by Agora/Management service when recording is done.
+   * Webhook called by Mux when stream status or assets change.
    */
-  async handleAgoraWebhook(req: Request, res: Response) {
+  async handleMuxWebhook(req: Request, res: Response) {
+    const { type, data } = req.body
+    logger.info(`🔔 [MUX WEBHOOK] Received event ${type}:`, JSON.stringify(req.body, null, 2))
+
     try {
-      const { event, data } = req.body
-      
-      // event usually looks like 'recording_finished' or similar depending on Agora config
-      if (event === 'recording_finished' || event === '31' /* Agora specific code */) {
-        const { channelName, fileList } = data
-        // fileList contains the path to the .mp4 or .m3u8 on S3/Storage
+      // Asset is ready (Recording finalized)
+      if (type === 'video.asset.ready') {
+        const assetId = data.id
+        const playbackId = data.playback_ids?.[0]?.id
+        const liveStreamId = data.live_stream_id
         
-        await streamingService.processCloudRecording(channelName, fileList)
+        if (liveStreamId && playbackId) {
+          await streamingService.processMuxAsset(assetId, playbackId, liveStreamId)
+        }
+      } 
+      // Live stream went active
+      else if (type === 'video.live_stream.active') {
+        logger.info(`📺 [MUX WEBHOOK] Stream is now LIVE: ${data.id}`)
+      }
+      // Live stream went idle (Ended)
+      else if (type === 'video.live_stream.idle') {
+        logger.info(`🏁 [MUX WEBHOOK] Stream is now IDLE: ${data.id}`)
       }
 
       return res.json({ success: true })
     } catch (error: any) {
-      console.error('Agora Webhook Error:', error.message)
-      return res.status(200).json({ success: true, message: 'Acknowledged but failed' })
+      logger.error('❌ [MUX WEBHOOK] Error handling Mux webhook:', error)
+      return res.json({ success: true, message: 'Acknowledged with error' })
+    }
+  },
+
+  /**
+   * Webhook called by Agora when recording status changes.
+   */
+  async handleAgoraWebhook(req: Request, res: Response) {
+    const { eventType, payload } = req.body
+    logger.info(`🔔 [AGORA WEBHOOK] EVENT ${eventType} RECEIVED. Full Payload: ${JSON.stringify(req.body, null, 2)}`)
+
+    try {
+      // eventType 31: cloud_recording_callback
+      if (eventType === 31) {
+        const { channelName, sid, fileList, status } = payload
+        logger.info(`[AGORA WEBHOOK] Processing Type 31 (Callback). Status: ${status}, Channel: ${channelName}`)
+
+        if (status === 4 || status === 5) {
+          logger.info(`✅ [AGORA WEBHOOK] Recording finished/uploaded for ${channelName}. SID: ${sid}`)
+          
+          const stream = await streamingService.getStreamByChannel(channelName)
+          if (stream) {
+            // Agora produces .mp4 in S3 mix mode with avOutputStreamType: 1
+            const fullPath = fileList?.[0]?.fileName || `${sid}_${channelName}.mp4`
+            const fileName = fullPath.split('/').pop() || fullPath
+            
+            // Determine if this is S3 or Dropbox based on fileList or default to current config
+            const isS3 = fileName.includes('supabase') || (process.env.AGORA_S3_ACCESS_KEY && !process.env.AGORA_S3_ACCESS_KEY.includes('error')) // Simple check
+            
+            if (isS3) {
+              const recordingUrl = `https://pkctjqtsisciblmihjvd.supabase.co/storage/v1/object/public/agora-recordings/${channelName}/${fileName}`
+              logger.info(`🔗 [AGORA WEBHOOK] Updating stream ${stream.id} with S3 URL: ${recordingUrl}`)
+              
+              await prisma.liveStream.update({
+                where: { id: stream.id },
+                data: { 
+                  status: 'RECORDED',
+                  recordingUrl: recordingUrl,
+                  dropboxPath: null
+                }
+              })
+            } else {
+              const dropboxPath = `/votenaija-recordings/recordings/${channelName}/${fileName}`
+              logger.info(`🔗 [AGORA WEBHOOK] Updating stream ${stream.id} with Dropbox path: ${dropboxPath}`)
+              
+              await prisma.liveStream.update({
+                where: { id: stream.id },
+                data: { 
+                  status: 'RECORDED',
+                  dropboxPath: dropboxPath,
+                  recordingUrl: dropboxPath
+                }
+              })
+            }
+          } else {
+            logger.warn(`⚠️ [AGORA WEBHOOK] No stream found in DB for channel ${channelName}`)
+          }
+        } else if (status === 3) {
+          logger.error(`❌ [AGORA WEBHOOK] Recording UPLOAD FAILED for ${channelName}. SID: ${sid}. Check S3 credentials!`)
+        } else {
+          logger.info(`ℹ️ [AGORA WEBHOOK] Status ${status} received. No action taken yet.`)
+        }
+      } else if (eventType === 30) {
+        logger.info(`📤 [AGORA WEBHOOK] Uploader started for ${payload.cname}`)
+      } else if (eventType === 40) {
+        logger.info(`⏺️ [AGORA WEBHOOK] Recorder started for ${payload.cname}`)
+      } else if (eventType === 11) {
+        logger.info(`🏁 [AGORA WEBHOOK] Session exit for ${payload.cname}`)
+      }
+
+      return res.json({ success: true })
+    } catch (error: any) {
+      logger.error('❌ [AGORA WEBHOOK] Fatal error during webhook processing:', error)
+      return res.json({ success: true, message: 'Acknowledged with error' })
     }
   },
 
@@ -163,7 +251,24 @@ export const streamingController = {
         return res.status(404).json({ success: false, message: 'Stream record not found' })
       }
 
+      if (stream.recordingUrl) {
+        return res.json({
+          success: true,
+          data: { url: stream.recordingUrl }
+        })
+      }
+
       if (!stream.dropboxPath) {
+        // If stream is older than 30 minutes and still no dropboxPath, it likely failed
+        const streamAgeMinutes = (Date.now() - new Date(stream.startTime).getTime()) / (1000 * 60)
+        
+        if (streamAgeMinutes > 30) {
+          return res.status(404).json({ 
+            success: false, 
+            message: 'This recording is currently unavailable or failed to process.' 
+          })
+        }
+
         return res.status(202).json({ 
           success: false, 
           status: 'PROCESSING',
@@ -207,6 +312,34 @@ export const streamingController = {
         success: false, 
         message: error.message 
       })
+    }
+  },
+
+  /**
+   * Deletes multiple streams at once (Participant only).
+   */
+  async bulkDelete(req: Request, res: Response) {
+    try {
+      const { streamIds } = req.body
+      if (!Array.isArray(streamIds) || streamIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'Stream IDs array required' })
+      }
+
+      const user = (req as any).user
+      const participant = await streamingService.getParticipantByUserId(user.id)
+      
+      if (!participant) {
+        return res.status(404).json({ success: false, message: 'Participant profile not found' })
+      }
+
+      await streamingService.deleteMultipleStreams(streamIds, participant.id)
+      
+      return res.json({
+        success: true,
+        message: `${streamIds.length} streams deleted successfully`
+      })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
     }
   }
 }

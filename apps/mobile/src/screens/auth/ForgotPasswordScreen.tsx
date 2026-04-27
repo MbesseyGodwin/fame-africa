@@ -3,19 +3,22 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../context/ThemeContext'
 import { authApi } from '../../utils/api'
 import { Ionicons } from '@expo/vector-icons'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 
 export default function ForgotPasswordScreen() {
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'email' | 'success'>('email')
 
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   async function handleSubmit() {
     if (!email.trim() || !email.includes('@')) {
@@ -45,7 +48,13 @@ export default function ForgotPasswordScreen() {
         {step === 'email' ? (
           <View>
             <View style={s.header}>
-              <Text style={s.title}>Reset Password</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={s.title}>Reset Password</Text>
+                <InfoTooltip 
+                  title="Password Recovery" 
+                  content="Enter the email address you used to register. We'll send you a secure link to create a new password. If you don't see the email within 2 minutes, please check your Spam folder." 
+                />
+              </View>
               <Text style={s.subtitle}>
                 Enter your email address and we'll send you instructions to reset your password.
               </Text>
@@ -91,9 +100,9 @@ export default function ForgotPasswordScreen() {
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: bg, padding: 24, paddingTop: 60 },
+    container: { flex: 1, backgroundColor: bg, padding: 24, paddingTop: insets.top + 10 },
     backBtn: { marginBottom: 32 },
     header: { marginBottom: 32 },
     title: { fontSize: 28, fontWeight: '700', color: textPrimary, marginBottom: 8 },

@@ -47,6 +47,20 @@ streamingRouter.post('/:streamId/end',
 )
 
 /**
+ * POST /api/v1/streaming/bulk-delete
+ * Deletes multiple stream sessions at once.
+ */
+streamingRouter.post('/bulk-delete',
+  authenticate,
+  [
+    body('streamIds').isArray().withMessage('streamIds must be an array'),
+    body('streamIds.*').isString().withMessage('Each streamId must be a string')
+  ],
+  validateRequest,
+  streamingController.bulkDelete
+)
+
+/**
  * GET /api/v1/streaming/live
  * Public feed of all current live streams.
  */
@@ -55,8 +69,16 @@ streamingRouter.get('/live',
 )
 
 /**
+ * POST /api/v1/streaming/webhook/mux
+ * Webhook called by Mux when stream status or assets change.
+ */
+streamingRouter.post('/webhook/mux',
+  streamingController.handleMuxWebhook
+)
+
+/**
  * POST /api/v1/streaming/webhook/agora
- * Webhook called by Agora when recording finishes.
+ * Webhook called by Agora when recording finishes (LEGACY).
  */
 streamingRouter.post('/webhook/agora',
   streamingController.handleAgoraWebhook

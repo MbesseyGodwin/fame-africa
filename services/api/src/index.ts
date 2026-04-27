@@ -8,7 +8,6 @@ import helmet from 'helmet'
 import morgan from 'morgan'
 import { createServer } from 'http'
 import { Server as SocketServer } from 'socket.io'
-import { PrismaClient } from '@prisma/client'
 
 import { authRouter } from './modules/auth/auth.routes'
 import { usersRouter } from './modules/users/users.routes'
@@ -27,6 +26,8 @@ import { auditRouter } from './modules/audit/audit.routes'
 import { arenaRouter } from './modules/arena/arena.routes'
 import { streamingRouter } from './modules/streaming/streaming.routes'
 import { moderationRouter } from './modules/moderation/moderation.routes'
+import { paymentsRouter } from './modules/payments/payments.routes'
+import { battlesRouter } from './modules/battles/battles.routes'
 
 import { errorHandler } from './middleware/error.middleware'
 import { rateLimiter } from './middleware/rateLimiter.middleware'
@@ -48,10 +49,8 @@ export const io = new SocketServer(httpServer, {
   },
 })
 
-// ── Prisma client (shared singleton) ─────────────────────────
-export const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-})
+import { prisma } from './lib/prisma'
+export { prisma }
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(helmet())
@@ -103,6 +102,8 @@ app.use('/api/v1/audit', auditRouter)
 app.use('/api/v1/arena', arenaRouter)
 app.use('/api/v1/streaming', streamingRouter)
 app.use('/api/v1/moderation', moderationRouter)
+app.use('/api/v1/payments', paymentsRouter)
+app.use('/api/v1/battles', battlesRouter)
 
 // ── Swagger UI Documentation ────────────────────────────────────
 const swaggerDocumentModified = { 

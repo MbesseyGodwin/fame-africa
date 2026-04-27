@@ -64,6 +64,10 @@ authRouter.post('/logout',
   /* #swagger.tags = ['Auth'] #swagger.summary = 'Logout user' */
   authenticate, AuthController.logout)
 
+authRouter.post('/logout-all',
+  /* #swagger.tags = ['Auth'] #swagger.summary = 'Logout from all devices' */
+  authenticate, AuthController.logoutAll)
+
 authRouter.post('/send-otp',
   /* 
     #swagger.tags = ['Auth'] 

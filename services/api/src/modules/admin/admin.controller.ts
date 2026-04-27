@@ -190,6 +190,26 @@ export async function updateParticipantStatus(req: Request, res: Response, next:
       where: { id: req.params.id },
       data: { status: req.body.status },
     })
+
+    // Notify user of status change
+    const { notificationService } = await import('../notifications/notification.service')
+    await notificationService.notifyUser({
+      userId: participant.userId,
+      title: 'Status Updated',
+      body: `Your participant status has been updated to ${req.body.status}.`,
+      type: 'ADMIN_ACTION',
+      emailSubject: `[FameAfrica] Status Update: ${req.body.status}`,
+      emailHtml: `
+        <div style="font-family: sans-serif; line-height: 1.6;">
+          <h2 style="color: #534AB7;">Status Updated</h2>
+          <p>Hello,</p>
+          <p>Your participant status in the current competition has been updated to <strong>${req.body.status}</strong> by an administrator.</p>
+          <p>If you have any questions, please reach out to support.</p>
+        </div>
+      `,
+      cycleId: participant.cycleId
+    })
+
     return ApiResponse.success(res, participant, 'Participant status updated')
   } catch (error) { next(error) }
 }
@@ -322,6 +342,38 @@ export async function getAuditLog(req: Request, res: Response, next: NextFunctio
       prisma.auditLog.count(),
     ])
     return ApiResponse.paginated(res, logs, total, parseInt(page), parseInt(limit))
+  } catch (error) { next(error) }
+}
+
+export async function exportAuditLog(req: Request, res: Response, next: NextFunction) {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      include: { user: { select: { email: true } } },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    const headers = ['ID', 'Date', 'Admin Email', 'Action', 'Entity Type', 'Entity ID', 'Old Value', 'New Value', 'IP Address']
+    
+    const rows = logs.map(log => [
+      log.id,
+      log.createdAt.toISOString(),
+      log.user?.email || 'System',
+      log.action,
+      log.entityType,
+      log.entityId || '',
+      log.oldValue ? JSON.stringify(log.oldValue).replace(/"/g, '""') : '',
+      log.newValue ? JSON.stringify(log.newValue).replace(/"/g, '""') : '',
+      log.ipAddress || ''
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n')
+
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', 'attachment; filename=audit-logs-export.csv')
+    return res.send(csvContent)
   } catch (error) { next(error) }
 }
 
@@ -472,6 +524,24 @@ export async function banUser(req: Request, res: Response, next: NextFunction) {
       select: { id: true, email: true, isActive: true },
     })
 
+    // Send notification/email before they lose access
+    const { notificationService } = await import('../notifications/notification.service')
+    await notificationService.notifyUser({
+      userId: user.id,
+      title: 'Account Banned',
+      body: 'Your account has been suspended for violating platform policies.',
+      type: 'SYSTEM',
+      emailSubject: '[FameAfrica] Account Suspension',
+      emailHtml: `
+        <div style="font-family: sans-serif; line-height: 1.6;">
+          <h2 style="color: #DC2626;">Account Suspended</h2>
+          <p>Hello,</p>
+          <p>We are writing to inform you that your FameAfrica account has been suspended due to violations of our platform policies.</p>
+          <p>As a result, you will no longer be able to participate in competitions or use the app.</p>
+        </div>
+      `
+    })
+
     await prisma.auditLog.create({
       data: { userId: adminId, action: 'BAN_USER', entityType: 'User', entityId: user.id },
     })
@@ -560,37 +630,548 @@ export async function getVoteTrends(req: Request, res: Response, next: NextFunct
 
 export async function broadcastNotification(req: Request, res: Response, next: NextFunction) {
   try {
-    const { title, body, type = 'SYSTEM', targetRole, cycleId } = req.body
+    const { title, body, type = 'SYSTEM', targetRole, cycleId, channels, scheduledAt } = req.body
     const adminId = (req as any).user.id
 
+    logger.info(`[Broadcast] Received broadcast request. Title: "${title}", Channels: ${channels.join(', ')}, TargetRole: ${targetRole || 'ALL'}, ScheduledAt: ${scheduledAt || 'Immediate'}`)
+
+    const broadcast = await prisma.broadcast.create({
+      data: {
+        title,
+        body,
+        type,
+        targetRole,
+        cycleId,
+        channels,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        status: scheduledAt ? 'SCHEDULED' : 'PENDING',
+        createdBy: adminId
+      }
+    })
+
+    logger.info(`[Broadcast] Created broadcast record ${broadcast.id} with status ${broadcast.status}`)
+
+    if (!scheduledAt) {
+      // Execute immediately in background
+      logger.info(`[Broadcast] Executing broadcast ${broadcast.id} immediately in background`)
+      executeBroadcast(broadcast.id).catch(err => logger.error(`Immediate broadcast ${broadcast.id} failed:`, err))
+    } else {
+      logger.info(`[Broadcast] Broadcast ${broadcast.id} scheduled for ${scheduledAt}`)
+    }
+
+    return ApiResponse.created(res, broadcast, scheduledAt ? 'Broadcast scheduled' : 'Broadcast started')
+  } catch (error) { 
+    logger.error(`[Broadcast] Error creating broadcast:`, error)
+    next(error) 
+  }
+}
+
+export async function listBroadcasts(req: Request, res: Response, next: NextFunction) {
+  try {
+    const broadcasts = await prisma.broadcast.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    })
+    return ApiResponse.success(res, broadcasts)
+  } catch (error) { next(error) }
+}
+
+export async function cancelBroadcast(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const broadcast = await prisma.broadcast.findUnique({ where: { id } })
+    if (!broadcast) return ApiResponse.notFound(res, 'Broadcast not found')
+    if (broadcast.status !== 'SCHEDULED') return ApiResponse.error(res, 'Only scheduled broadcasts can be cancelled')
+
+    await prisma.broadcast.delete({ where: { id } })
+    return ApiResponse.success(res, null, 'Broadcast cancelled')
+  } catch (error) { next(error) }
+}
+
+/**
+ * Background task to process scheduled broadcasts.
+ * Called by cron.
+ */
+export async function processScheduledBroadcasts() {
+  const now = new Date()
+  const pending = await prisma.broadcast.findMany({
+    where: {
+      status: 'SCHEDULED',
+      scheduledAt: { lte: now }
+    }
+  })
+
+  for (const b of pending) {
+    executeBroadcast(b.id).catch(err => logger.error(`Scheduled broadcast ${b.id} failed:`, err))
+  }
+}
+
+async function executeBroadcast(broadcastId: string) {
+  logger.info(`[Broadcast] executeBroadcast called for ID: ${broadcastId}`)
+  const broadcast = await prisma.broadcast.findUnique({ where: { id: broadcastId } })
+  if (!broadcast) {
+    logger.warn(`[Broadcast] Broadcast ${broadcastId} not found in database.`)
+    return
+  }
+
+  try {
+    await prisma.broadcast.update({
+      where: { id: broadcastId },
+      data: { status: 'PROCESSING' }
+    })
+    logger.info(`[Broadcast] Updated status to PROCESSING for ${broadcastId}`)
+
     const where: any = { isActive: true }
-    if (targetRole) where.role = targetRole
+    if (broadcast.targetRole) where.role = broadcast.targetRole
 
     const users = await prisma.user.findMany({
       where,
-      select: { id: true },
+      select: { id: true, email: true, phone: true }
+    })
+    
+    logger.info(`[Broadcast] Found ${users.length} active users matching targetRole: ${broadcast.targetRole || 'ALL'}`)
+
+    const { notificationService } = await import('../notifications/notification.service')
+    const { sendSms } = await import('../../utils/sms')
+
+    let count = 0
+    let pushCount = 0
+    let emailCount = 0
+    let smsCount = 0
+
+    for (const user of users) {
+      try {
+        let sentAny = false;
+        // 1. Push / In-app
+        if (broadcast.channels.includes('PUSH')) {
+          await notificationService.notifyUser({
+            userId: user.id,
+            title: broadcast.title,
+            body: broadcast.body,
+            type: broadcast.type,
+            cycleId: broadcast.cycleId || undefined
+          })
+          pushCount++;
+          sentAny = true;
+        }
+
+        // 2. Email
+        if (broadcast.channels.includes('EMAIL') && user.email) {
+          await notificationService.sendEmailNotification({
+            userId: user.id,
+            subject: `[FameAfrica] ${broadcast.title}`,
+            html: `
+              <div style="font-family: sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+                <div style="background: #534AB7; padding: 20px; text-align: center;">
+                  <h1 style="color: #fff; margin: 0; font-size: 24px;">Fame Africa</h1>
+                </div>
+                <div style="padding: 30px;">
+                  <h2 style="color: #333; margin-top: 0;">${broadcast.title}</h2>
+                  <p style="color: #555; font-size: 16px;">${broadcast.body}</p>
+                  <a href="${process.env.WEB_URL}" style="display: inline-block; background: #534AB7; color: #fff; padding: 12px 25px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 20px;">Open App</a>
+                </div>
+                <div style="background: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #888;">
+                  © ${new Date().getFullYear()} FameAfrica. All rights reserved.<br/>
+                  You are receiving this because you are a registered member of FameAfrica.
+                </div>
+              </div>
+            `
+          })
+          emailCount++;
+          sentAny = true;
+        }
+
+        // 3. SMS
+        if (broadcast.channels.includes('SMS') && user.phone) {
+          await sendSms(user.phone, `${broadcast.title}: ${broadcast.body}`).catch(e => logger.error(`[Broadcast] SMS fail for ${user.id}`, e))
+          smsCount++;
+          sentAny = true;
+        }
+
+        if (sentAny) count++;
+      } catch (err) {
+        logger.error(`[Broadcast] Failed to process broadcast for user ${user.id}:`, err)
+      }
+    }
+
+    logger.info(`[Broadcast] Finished sending. Total users reached: ${count}. Breakdown: ${pushCount} Push, ${emailCount} Email, ${smsCount} SMS.`)
+
+    await prisma.broadcast.update({
+      where: { id: broadcastId },
+      data: {
+        status: 'COMPLETED',
+        sentAt: new Date(),
+        recipientCount: count
+      }
     })
 
-    const notifications = users.map(u => ({
-      userId: u.id,
-      title,
-      body,
-      type: type as any,
-      cycleId: cycleId || null,
-    }))
+    // Audit log for the broadcast
+    await prisma.auditLog.create({
+      data: {
+        userId: broadcast.createdBy,
+        action: 'BROADCAST_NOTIFICATION',
+        entityType: 'Broadcast',
+        entityId: broadcast.id,
+        newValue: { 
+          title: broadcast.title, 
+          channels: broadcast.channels, 
+          recipientCount: count,
+          breakdown: { push: pushCount, email: emailCount, sms: smsCount }
+        },
+      },
+    })
 
-    const result = await prisma.notification.createMany({ data: notifications })
+    logger.info(`[Broadcast] Broadcast ${broadcastId} COMPLETED and logged to audit.`)
+  } catch (error: any) {
+    logger.error(`[Broadcast] Broadcast ${broadcastId} CRITICAL FAILURE:`, error)
+    await prisma.broadcast.update({
+      where: { id: broadcastId },
+      data: {
+        status: 'FAILED',
+        error: error.message
+      }
+    })
+  }
+}
+
+// ── God Mode Actions ──────────────────────────────────────────
+
+export async function adjustParticipantVotes(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const { amount, reason } = req.body
+    const adminId = (req as any).user.id
+
+    const participant = await prisma.participant.findUnique({ where: { id } })
+    if (!participant) return ApiResponse.notFound(res, 'Participant not found')
+
+    const updatedParticipant = await prisma.participant.update({
+      where: { id },
+      data: {
+        totalVotes: { [amount >= 0 ? 'increment' : 'decrement']: Math.abs(amount) }
+      }
+    })
+
+    // Notify user of vote adjustment
+    const { notificationService } = await import('../notifications/notification.service')
+    await notificationService.notifyUser({
+      userId: participant.userId,
+      title: 'Votes Adjusted',
+      body: `An administrator has ${amount >= 0 ? 'added' : 'removed'} ${Math.abs(amount)} votes from your profile. Reason: ${reason}`,
+      type: 'ADMIN_ACTION',
+      emailSubject: '[FameAfrica] Vote Tally Adjustment',
+      emailHtml: `
+        <div style="font-family: sans-serif; line-height: 1.6;">
+          <h2 style="color: #534AB7;">Vote Adjustment</h2>
+          <p>Hello,</p>
+          <p>Your total vote tally has been adjusted by an administrator.</p>
+          <p><strong>Change:</strong> ${amount >= 0 ? '+' : '-'}${Math.abs(amount)} votes</p>
+          <p><strong>Reason:</strong> ${reason}</p>
+          <p>If you believe this is an error, please contact support.</p>
+        </div>
+      `,
+      cycleId: participant.cycleId
+    })
+
+    // Create a special vote record to track this adjustment
+    await prisma.vote.create({
+      data: {
+        participantId: id,
+        cycleId: participant.cycleId,
+        dayNumber: 0,
+        voteDate: new Date(),
+        source: 'ADMIN_ADJUSTMENT',
+        ipAddress: '0.0.0.0',
+        voterPhoneHash: `ADMIN_${adminId}_${Date.now()}`
+      }
+    })
 
     await prisma.auditLog.create({
       data: {
         userId: adminId,
-        action: 'BROADCAST_NOTIFICATION',
-        entityType: 'Notification',
-        newValue: { title, targetRole, recipientCount: result.count },
-      },
+        action: 'ADJUST_VOTES',
+        entityType: 'Participant',
+        entityId: id,
+        oldValue: { totalVotes: participant.totalVotes },
+        newValue: { totalVotes: updatedParticipant.totalVotes, adjustment: amount, reason }
+      }
     })
 
-    return ApiResponse.success(res, { sent: result.count }, `Notification sent to ${result.count} users`)
+    return ApiResponse.success(res, updatedParticipant, `Votes adjusted by ${amount}`)
+  } catch (error) { next(error) }
+}
+
+export async function giveStrike(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+    const adminId = (req as any).user.id
+
+    const participant = await prisma.participant.findUnique({
+      where: { id },
+      include: { user: true }
+    })
+    if (!participant) return ApiResponse.notFound(res, 'Participant not found')
+
+    const strike = await prisma.participantStrike.create({
+      data: {
+        participantId: id,
+        reason,
+        issuedBy: adminId
+      }
+    })
+
+    const updatedParticipant = await prisma.participant.update({
+      where: { id },
+      data: { totalStrikes: { increment: 1 } }
+    })
+
+    // Notify the user via unified service (Push + Email)
+    const { notificationService } = await import('../notifications/notification.service')
+    await notificationService.notifyUser({
+      userId: participant.userId,
+      type: 'ADMIN_ACTION',
+      title: 'Strike Issued',
+      body: `You have received a strike for: ${reason}. Repeated violations may lead to disqualification.`,
+      emailSubject: '[FameAfrica] Formal Strike Warning',
+      emailHtml: `
+        <div style="font-family: sans-serif; line-height: 1.6;">
+          <h2 style="color: #EA580C;">Strike Warning</h2>
+          <p>Hello ${participant.displayName},</p>
+          <p>We are issuing a formal strike against your account for the following reason:</p>
+          <blockquote style="background: #FFF7ED; border-left: 4px solid #EA580C; padding: 10px; margin: 20px 0;">
+            ${reason}
+          </blockquote>
+          <p>Please review our platform guidelines to ensure future compliance. <strong>Repeated violations will result in disqualification from the competition.</strong></p>
+        </div>
+      `,
+      cycleId: participant.cycleId
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'GIVE_STRIKE',
+        entityType: 'Participant',
+        entityId: id,
+        newValue: { strikeId: strike.id, reason }
+      }
+    })
+
+    return ApiResponse.success(res, updatedParticipant, 'Strike issued successfully')
+  } catch (error) { next(error) }
+}
+
+export async function listStrikes(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const strikes = await prisma.participantStrike.findMany({
+      where: { participantId: id },
+      orderBy: { createdAt: 'desc' }
+    })
+    return ApiResponse.success(res, strikes)
+  } catch (error) { next(error) }
+}
+
+export async function removeStrike(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id, strikeId } = req.params
+    const adminId = (req as any).user.id
+
+    await prisma.participantStrike.delete({ where: { id: strikeId } })
+    
+    const updatedParticipant = await prisma.participant.update({
+      where: { id },
+      data: { totalStrikes: { decrement: 1 } }
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'REMOVE_STRIKE',
+        entityType: 'Participant',
+        entityId: id,
+        oldValue: { strikeId }
+      }
+    })
+
+    return ApiResponse.success(res, updatedParticipant, 'Strike removed')
+  } catch (error) { next(error) }
+}
+
+export async function forceWinner(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id, participantId } = req.params
+    const adminId = (req as any).user.id
+
+    // Check if participant belongs to cycle
+    const participant = await prisma.participant.findFirst({
+      where: { id: participantId, cycleId: id }
+    })
+    if (!participant) return ApiResponse.error(res, 'Participant does not belong to this cycle', 400)
+
+    // Mark winner
+    await prisma.participant.update({
+      where: { id: participantId },
+      data: { isWinner: true, status: 'WINNER' }
+    })
+
+    // Notify winner
+    const { notificationService } = await import('../notifications/notification.service')
+    await notificationService.notifyUser({
+      userId: participant.userId,
+      title: '🎉 Congratulations!',
+      body: 'You have been declared the winner of the competition cycle!',
+      type: 'WINNER_ANNOUNCED',
+      emailSubject: '[FameAfrica] YOU ARE THE WINNER!',
+      emailHtml: `
+        <div style="font-family: sans-serif; line-height: 1.6; text-align: center; border: 2px solid #534AB7; padding: 40px; border-radius: 20px;">
+          <h1 style="color: #534AB7;">🎉 CONGRATULATIONS! 🎉</h1>
+          <h2 style="color: #111;">You have been declared the winner!</h2>
+          <p style="font-size: 18px;">Your talent and hard work have paid off. You are the official winner of this competition cycle.</p>
+          <p>Our team will contact you shortly regarding the prize disbursement and next steps.</p>
+          <div style="margin-top: 30px; font-weight: bold; color: #534AB7;">FameAfrica Team</div>
+        </div>
+      `,
+      cycleId: id
+    })
+
+    // Force end the cycle
+    await prisma.competitionCycle.update({
+      where: { id },
+      data: { status: 'COMPLETED' }
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'FORCE_WINNER',
+        entityType: 'CompetitionCycle',
+        entityId: id,
+        newValue: { winnerId: participantId }
+      }
+    })
+
+    return ApiResponse.success(res, null, 'Winner declared and cycle completed')
+  } catch (error) { next(error) }
+}
+
+export async function forceCycleStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+    const adminId = (req as any).user.id
+
+    const oldCycle = await prisma.competitionCycle.findUnique({ where: { id } })
+    const updatedCycle = await prisma.competitionCycle.update({
+      where: { id },
+      data: { status }
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'FORCE_CYCLE_STATUS',
+        entityType: 'CompetitionCycle',
+        entityId: id,
+        oldValue: { status: oldCycle?.status },
+        newValue: { status }
+      }
+    })
+
+    return ApiResponse.success(res, updatedCycle, `Cycle status forced to ${status}`)
+  } catch (error) { next(error) }
+}
+
+export async function getAnalytics(req: Request, res: Response, next: NextFunction) {
+  try {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const [
+      totalRevenueRaw,
+      dailyVotes,
+      categoryDistribution,
+      stateDistribution,
+      registrationGrowth,
+      topParticipants,
+      recentAlerts,
+      totalUsers,
+      totalParticipants
+    ] = await Promise.all([
+      // 1. Total Revenue
+      prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { status: 'SUCCESS' }
+      }),
+      // 2. Daily Votes Trend (Last 30 days)
+      prisma.dailyVoteTally.groupBy({
+        by: ['voteDate'],
+        _sum: { voteCount: true },
+        where: { voteDate: { gte: thirtyDaysAgo } },
+        orderBy: { voteDate: 'asc' }
+      }),
+      // 3. Category Distribution
+      prisma.participant.groupBy({
+        by: ['category'],
+        _count: { id: true },
+        where: { status: { not: 'PENDING_PAYMENT' } }
+      }),
+      // 4. State Distribution
+      prisma.participant.groupBy({
+        by: ['state'],
+        _count: { id: true },
+        where: { state: { not: null } }
+      }),
+      // 5. Registration Growth (Daily for last 30 days)
+      prisma.participant.findMany({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        select: { createdAt: true }
+      }),
+      // 6. Top Participants
+      prisma.participant.findMany({
+        orderBy: { totalVotes: 'desc' },
+        take: 10,
+        select: { id: true, displayName: true, totalVotes: true, category: true, photoUrl: true }
+      }),
+      // 7. Recent Security Alerts
+      prisma.securityAlert.count({
+        where: { createdAt: { gte: thirtyDaysAgo } }
+      }),
+      prisma.user.count(),
+      prisma.participant.count()
+    ])
+
+    // Process growth data
+    const growthMap: Record<string, number> = {}
+    registrationGrowth.forEach(p => {
+      const date = p.createdAt.toISOString().split('T')[0]
+      growthMap[date] = (growthMap[date] || 0) + 1
+    })
+    const growthTrend = Object.entries(growthMap).map(([date, count]) => ({ date, count })).sort((a,b) => a.date.localeCompare(b.date))
+
+    return ApiResponse.success(res, {
+      summary: {
+        totalRevenue: Number(totalRevenueRaw._sum.amount || 0),
+        totalUsers,
+        totalParticipants,
+        securityAlertsCount: recentAlerts
+      },
+      dailyVotes: dailyVotes.map(v => ({ 
+        date: v.voteDate.toISOString().split('T')[0], 
+        votes: v._sum.voteCount || 0 
+      })),
+      categoryDistribution: categoryDistribution.map(c => ({ 
+        name: c.category || 'Unknown', 
+        value: c._count.id 
+      })),
+      stateDistribution: stateDistribution.map(s => ({ 
+        name: s.state || 'Unknown', 
+        value: s._count.id 
+      })),
+      growthTrend,
+      topParticipants
+    })
   } catch (error) { next(error) }
 }
 

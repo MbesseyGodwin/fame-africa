@@ -11,10 +11,22 @@ export const rateLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' },
 }) as unknown as RequestHandler
 
+import * as SecurityService from '../modules/security/security.service'
+
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { success: false, message: 'Too many auth attempts, please try again in 15 minutes.' },
+  handler: (req, res, next, options) => {
+    SecurityService.reportSecurityIncident(
+      'RATE_LIMIT_EXCEEDED',
+      'MEDIUM',
+      `Auth rate limit exceeded from IP: ${req.ip}`,
+      { ip: req.ip, userAgent: req.headers['user-agent'], path: req.path }
+    ).catch(() => {})
+    
+    res.status(options.statusCode).send(options.message)
+  }
 }) as unknown as RequestHandler
 
 export const voteRateLimiter = rateLimit({

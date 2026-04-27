@@ -2,7 +2,10 @@
 
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fameafrica-api.onrender.com/api/v1'
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://fameafrica-api.onrender.com/api/v1'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+
+
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -209,10 +212,25 @@ export const adminApi = {
   getFraudFlags: () => api.get('/admin/fraud-flags'),
   resolveFraudFlag: (id: string, resolution: string) => api.put(`/admin/fraud-flags/${id}/resolve`, { resolution }),
   getAuditLog: (params: any) => api.get('/admin/audit-log', { params }),
+  exportAuditLog: () => api.get('/admin/audit-log/export', { responseType: 'blob' }),
   getSponsors: (cycleId: string) => api.get('/admin/sponsors', { params: { cycleId } }),
   createSponsor: (data: any) => api.post('/admin/sponsors', data),
   updateSponsor: (id: string, data: any) => api.put(`/admin/sponsors/${id}`, data),
   deleteSponsor: (id: string) => api.delete(`/admin/sponsors/${id}`),
+  
+  // God Mode Actions
+  adjustVotes: (id: string, amount: number, reason: string) => 
+    api.post(`/admin/participants/${id}/votes/adjust`, { amount, reason }),
+  giveStrike: (id: string, reason: string) => 
+    api.post(`/admin/participants/${id}/strikes`, { reason }),
+  getStrikes: (id: string) => 
+    api.get(`/admin/participants/${id}/strikes`),
+  removeStrike: (id: string, strikeId: string) => 
+    api.delete(`/admin/participants/${id}/strikes/${strikeId}`),
+  forceWinner: (cycleId: string, participantId: string) => 
+    api.post(`/admin/cycles/${cycleId}/force-winner/${participantId}`),
+  forceCycleStatus: (cycleId: string, status: string) => 
+    api.post(`/admin/cycles/${cycleId}/force-status`, { status }),
 }
 
 export const adminUsersApi = {
@@ -229,5 +247,7 @@ export const adminStatsApi = {
 }
 
 export const adminBroadcastApi = {
-  sendBroadcast: (data: any) => api.post('/admin/broadcast', data),
+  getBroadcasts: () => api.get('/admin/notifications/broadcasts'),
+  sendBroadcast: (data: any) => api.post('/admin/notifications/broadcast', data),
+  cancelBroadcast: (id: string) => api.delete(`/admin/notifications/broadcasts/${id}`),
 }

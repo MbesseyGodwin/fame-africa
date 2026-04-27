@@ -6,12 +6,14 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import { authApi } from '../../utils/api'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_REGEX = /^[0-9]{10,15}$/
@@ -28,12 +30,13 @@ export function LoginScreen() {
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const { signIn } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const s = authStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = authStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   async function handleLogin() {
     const trimmedEmail = email.trim()
@@ -81,7 +84,13 @@ export function LoginScreen() {
         </View>
 
         <View style={s.card}>
-          <Text style={s.formTitle}>Sign in to your account</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={s.formTitle}>Sign in to your account</Text>
+            <InfoTooltip 
+              title="Why Sign In?" 
+              content="Signing in allows you to save your stans, track your voting history, and participate in live stream chats. If you just want to vote, you can continue as a guest." 
+            />
+          </View>
 
           <Text style={s.label}>Email</Text>
           <TextInput
@@ -149,13 +158,14 @@ export function RegisterScreen() {
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const { signIn } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [form, setForm] = useState({ fullName: '', displayName: '', email: '', phone: '', password: '' })
   const [acceptedOath, setAcceptedOath] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const s = authStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = authStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   function update(key: string, value: string) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -229,7 +239,13 @@ export function RegisterScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView style={s.container} contentContainerStyle={s.content}>
         <View style={s.logoArea}>
-          <Text style={s.logo}>Fame Africa</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={s.logo}>Fame Africa</Text>
+            <InfoTooltip 
+              title="Creating an Account" 
+              content="Your FameAfrica account is your portal to the competition. Make sure to use your real name as it appears on your ID to ensure you can claim prizes later!" 
+            />
+          </View>
           <Text style={s.tagline}>Create your account</Text>
         </View>
 
@@ -336,9 +352,9 @@ export function RegisterScreen() {
   )
 }
 
-function authStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function authStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: bg },
+    container: { flex: 1, backgroundColor: bg, paddingTop: insets.top + 10 },
     content: { padding: 24, paddingTop: 60, paddingBottom: 40 },
     logoArea: { alignItems: 'center', marginBottom: 32 },
     logo: { fontSize: 28, fontWeight: '500', color: theme.primaryColor },

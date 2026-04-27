@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
@@ -13,6 +14,7 @@ export default function VerifyOtpScreen() {
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const { user, refreshUser } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
@@ -26,7 +28,7 @@ export default function VerifyOtpScreen() {
     return () => clearInterval(timer)
   }, [countdown])
 
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   async function handleVerify() {
     if (otp.length < 6) {
@@ -111,9 +113,9 @@ export default function VerifyOtpScreen() {
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: bg, padding: 24, paddingTop: 60 },
+    container: { flex: 1, backgroundColor: bg, padding: 24, paddingTop: insets.top + 10 },
     backBtn: { marginBottom: 32 },
     header: { marginBottom: 32 },
     title: { fontSize: 28, fontWeight: '700', color: textPrimary, marginBottom: 8 },

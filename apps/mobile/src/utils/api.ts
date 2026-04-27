@@ -27,6 +27,10 @@ const instances = [api, uploadApi]
 
 instances.forEach(instance => {
   instance.interceptors.request.use(async (config) => {
+    // Log the full URL for debugging
+    const fullUrl = `${config.baseURL}${config.url}`
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${fullUrl}`)
+    
     const token = await SecureStore.getItemAsync('accessToken')
     if (token) config.headers.Authorization = `Bearer ${token}`
     return config
@@ -65,6 +69,7 @@ export const authApi = {
   resetPassword: (token: string, password: string) => api.post('/auth/reset-password', { token, password }),
   changeEmail: (newEmail: string) => api.post('/auth/change-email', { newEmail }),
   refreshToken: (refreshToken: string) => api.post('/auth/refresh-token', { refreshToken }),
+  logoutAll: () => api.post('/auth/logout-all'),
   requestDeletion: (email: string) => api.post('/auth/request-deletion', { email }),
   confirmDeletion: (otpCode: string) => api.post('/auth/confirm-deletion', { otpCode }),
 }
@@ -76,7 +81,7 @@ export const usersApi = {
   updatePhoto: (formData: FormData) => uploadApi.post('/users/me/photo', formData),
   getPreferences: () => api.get('/users/me/preferences'),
   updatePreferences: (data: any) => api.put('/users/me/preferences', data),
-  changePassword: (data: any) => api.post('/users/me/change-password', data),
+  changePassword: (data: any) => api.put('/users/me/password', data),
   updatePhone: (data: any) => api.put('/users/me/phone', data),
   getActivity: (params?: any) => api.get('/users/me/activity', { params }),
 }
@@ -104,6 +109,19 @@ export const participantsApi = {
   confirmWithdrawal: (token: string) => api.post('/participants/me/withdraw/confirm', { token }),
   getAiAdvice: () => api.get('/participants/me/ai-advice'),
   updateProfile: (data: any) => api.put('/participants/me/profile', data),
+  getDiscoveryFeed: (params?: { 
+    limit?: number; 
+    cursor?: string; 
+    category?: string; 
+    state?: string; 
+    search?: string 
+  }) => api.get('/participants/discovery/videos', { params }),
+  addVideo: (data: { url: string; title?: string }) => api.post('/participants/me/videos', data),
+  updateVideo: (videoId: string, data: { url?: string; title?: string }) => api.put(`/participants/me/videos/${videoId}`, data),
+  deleteVideo: (videoId: string) => api.delete(`/participants/me/videos/${videoId}`),
+  toggleLike: (videoId: string) => api.post(`/participants/videos/${videoId}/like`),
+  addComment: (videoId: string, content: string) => api.post(`/participants/videos/${videoId}/comments`, { content }),
+  getComments: (videoId: string) => api.get(`/participants/videos/${videoId}/comments`),
 }
 
 // ── Audit ─────────────────────────────────────────────────────
@@ -176,6 +194,8 @@ export const streamingApi = {
     api.post('/streaming/start', data),
   endStream: (streamId: string) =>
     api.post(`/streaming/${streamId}/end`),
+  bulkDeleteStreams: (streamIds: string[]) =>
+    api.post('/streaming/bulk-delete', { streamIds }),
   listLive: (cycleId?: string) =>
     api.get('/streaming/live', { params: { cycleId } }),
   listRecorded: (params?: { cycleId?: string; search?: string; category?: string; sortBy?: string; page?: number; limit?: number }, p0?: number) =>
@@ -198,4 +218,24 @@ export const moderationApi = {
     api.get('/moderation/reports', { params: { status } }),
   resolveReport: (id: string, actionTaken: string) =>
     api.patch(`/moderation/reports/${id}`, { actionTaken }),
+}
+
+// ── Battles ───────────────────────────────────────────────────
+export const battlesApi = {
+  getActive: (cycleId: string) => api.get('/battles/active', { params: { cycleId } }),
+  getPast: (cycleId: string) => api.get('/battles/past', { params: { cycleId } }),
+  vote: (battleId: string, data: { participantId: string, voterPhone: string }) => 
+    api.post(`/battles/${battleId}/vote`, data),
+}
+
+// ── Payments ──────────────────────────────────────────────────
+export const paymentsApi = {
+  getPackages: () => api.get('/payments/mega-vote-packages'),
+  initializeMegaVote: (data: { 
+    participantId: string, 
+    amount: number, 
+    currency: string, 
+    reference: string, 
+    voteCount: number 
+  }) => api.post('/payments/mega-vote/initialize', data),
 }

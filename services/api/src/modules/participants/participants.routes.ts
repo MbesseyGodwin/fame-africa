@@ -7,9 +7,18 @@ import { authenticate, optionalAuthenticate } from '../../middleware/auth.middle
 import { prisma } from '../../index'
 import { ApiResponse } from '../../utils/response'
 import * as ParticipantsController from './participants.controller'
+import * as ParticipantVideosController from './participant-videos.controller'
 import { upload } from '../../middleware/upload'
 
 export const participantsRouter = Router()
+
+// Discovery
+participantsRouter.get('/discovery/videos', optionalAuthenticate, ParticipantVideosController.getDiscoveryFeed)
+
+// Public Video Interaction
+participantsRouter.get('/videos/:videoId/comments', ParticipantVideosController.getComments)
+participantsRouter.post('/videos/:videoId/like', authenticate, ParticipantVideosController.toggleLike)
+participantsRouter.post('/videos/:videoId/comments', authenticate, ParticipantVideosController.addComment)
 
 // Public
 participantsRouter.get('/', ParticipantsController.listParticipants)
@@ -159,6 +168,11 @@ participantsRouter.put('/me/profile',
   ParticipantsController.updateMyProfile
 )
 participantsRouter.get('/me/ai-advice', authenticate, ParticipantsController.getMyAiAdvice)
+
+// Video Management
+participantsRouter.post('/me/videos', authenticate, ParticipantVideosController.addVideo)
+participantsRouter.put('/me/videos/:videoId', authenticate, ParticipantVideosController.updateVideo)
+participantsRouter.delete('/me/videos/:videoId', authenticate, ParticipantVideosController.deleteVideo)
 
 // ── Withdrawal ────────────────────────────────────────────────
 // Step 1: Request a withdrawal token (sends email)

@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@getbrevo/brevo": "^5.0.4",
-    "@prisma/client": "^5.7.0",
+    "@mux/mux-node": "^14.0.1",
+    "@prisma/client": "5.22.0",
     "@votenaija/database": "*",
     "agora-access-token": "^2.0.4",
     "axios": "^1.15.0",

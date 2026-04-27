@@ -9,9 +9,9 @@ import Link from 'next/link'
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuthStore()
-  
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+
+  const [email, setEmail] = useState('admin@votenaija.ng')
+  const [password, setPassword] = useState('Admin@VoteNaija2026!')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
-      
+
       const user = useAuthStore.getState().user
       if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
         router.push('/admin')
@@ -48,7 +48,7 @@ export default function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-gray-900 py-8 px-4 shadow sm:rounded-xl sm:px-10 border border-gray-100 dark:border-gray-800">
           <form className="space-y-6" onSubmit={handleLogin}>
-            
+
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
                 {error}

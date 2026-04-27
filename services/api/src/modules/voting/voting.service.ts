@@ -45,7 +45,10 @@ export async function sendVoteOtp(input: SendVoteOtpInput) {
 
   const cycle = participant.cycle
   const now = new Date()
-  if (now < cycle.votingOpen || now > cycle.votingClose) {
+  
+  // God Mode: If status is explicitly VOTING_OPEN, allow voting regardless of exact seconds
+  const isTimeValid = now >= cycle.votingOpen && now <= cycle.votingClose
+  if (cycle.status !== 'VOTING_OPEN' && !isTimeValid) {
     throw new AppError('Voting is not currently open', 400)
   }
 
@@ -146,7 +149,8 @@ export async function castVote(input: CastVoteInput) {
 
   const cycle = participant.cycle
   const now = new Date()
-  if (now < cycle.votingOpen || now > cycle.votingClose) {
+  const isTimeValid = now >= cycle.votingOpen && now <= cycle.votingClose
+  if (cycle.status !== 'VOTING_OPEN' && !isTimeValid) {
     throw new AppError('Voting is not currently open', 400)
   }
 

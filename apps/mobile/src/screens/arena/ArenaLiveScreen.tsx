@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, ActivityIndicator, Alert } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../context/ThemeContext'
@@ -23,6 +24,7 @@ interface Question {
 export function ArenaLiveScreen({ eventId }: { eventId: string }) {
   const { theme, textPrimary, textSecondary, surface, bg } = useTheme()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const socketRef = useRef<any>(null)
 
   const [loading, setLoading] = useState(true)
@@ -35,7 +37,7 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
   const [hasAnswered, setHasAnswered] = useState(false)
 
   const timerAnim = useRef(new Animated.Value(1)).current
-  const s = makeStyles(theme, surface, textPrimary, textSecondary)
+  const s = makeStyles(theme, surface, textPrimary, textSecondary, insets)
 
   useEffect(() => {
     fetchEvent()
@@ -189,8 +191,8 @@ export function ArenaLiveScreen({ eventId }: { eventId: string }) {
   )
 }
 
-const makeStyles = (theme: any, surface: string, textPrimary: string, textSecondary: string) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fe', padding: 24, paddingTop: 60 },
+const makeStyles = (theme: any, surface: string, textPrimary: string, textSecondary: string, insets: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f8f9fe', padding: 24, paddingTop: insets.top + 10 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
   statBox: { alignItems: 'center' },
   statLabel: { fontSize: 10, color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },

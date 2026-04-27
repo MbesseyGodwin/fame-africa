@@ -40,7 +40,23 @@ adminRouter.put('/settings/global', AdminController.updateGlobalSettings)
 // Participants
 adminRouter.get('/participants', AdminController.listAllParticipants)
 adminRouter.put('/participants/:id/status', AdminController.updateParticipantStatus)
+adminRouter.post('/participants/:id/votes/adjust', [
+  body('amount').isInt(),
+  body('reason').trim().notEmpty(),
+], validateRequest, AdminController.adjustParticipantVotes)
+adminRouter.post('/participants/:id/strikes', [
+  body('reason').trim().notEmpty(),
+], validateRequest, AdminController.giveStrike)
+adminRouter.get('/participants/:id/strikes', AdminController.listStrikes)
+adminRouter.delete('/participants/:id/strikes/:strikeId', AdminController.removeStrike)
 adminRouter.delete('/participants/:id', AdminController.removeParticipant)
+
+// Cycles
+adminRouter.get('/cycles', AdminController.listCycles)
+adminRouter.post('/cycles/:id/force-winner/:participantId', AdminController.forceWinner)
+adminRouter.post('/cycles/:id/force-status', [
+  body('status').isIn(['DRAFT', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED', 'VOTING_OPEN', 'VOTING_CLOSED', 'REVEALING', 'COMPLETED', 'CANCELLED']),
+], validateRequest, AdminController.forceCycleStatus)
 
 // Votes
 adminRouter.get('/votes/live', AdminController.getLiveVotes)
@@ -57,6 +73,7 @@ adminRouter.get('/fraud-flags', AdminController.getFraudFlags)
 adminRouter.put('/fraud-flags/:id/resolve', AdminController.resolveFraudFlag)
 
 // Audit log
+adminRouter.get('/audit-log/export', AdminController.exportAuditLog)
 adminRouter.get('/audit-log', AdminController.getAuditLog)
 
 // Sponsors
@@ -77,9 +94,15 @@ adminRouter.put('/users/:id/unban', AdminController.unbanUser)
 // Platform stats
 adminRouter.get('/stats/overview', AdminController.getPlatformStats)
 adminRouter.get('/stats/votes-over-time', AdminController.getVoteTrends)
+adminRouter.get('/analytics', AdminController.getAnalytics)
 
 // Broadcast
+adminRouter.get('/notifications/broadcasts', AdminController.listBroadcasts)
 adminRouter.post('/notifications/broadcast', [
   body('title').trim().notEmpty().withMessage('Title required'),
   body('body').trim().notEmpty().withMessage('Body required'),
+  body('channels').isArray().withMessage('Channels must be an array'),
+  body('channels.*').isIn(['PUSH', 'EMAIL', 'SMS']).withMessage('Invalid channel'),
+  body('scheduledAt').optional({ nullable: true }).isISO8601().withMessage('Invalid schedule date'),
 ], validateRequest, AdminController.broadcastNotification)
+adminRouter.delete('/notifications/broadcasts/:id', AdminController.cancelBroadcast)

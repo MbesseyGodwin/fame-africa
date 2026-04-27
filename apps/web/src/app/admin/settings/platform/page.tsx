@@ -13,7 +13,16 @@ export default function AdminSettingsPlatform() {
   const [flags, setFlags] = useState({
     maintenance_mode: 'false',
     allow_new_registrations: 'true',
-    max_votes_per_device: '3'
+    max_votes_per_device: '3',
+    daily_elimination_count: '1',
+    vote_price_ngn: '100',
+    max_votes_per_transaction: '1000',
+    min_withdrawal_amount: '10000',
+    enable_kyc_verification: 'false',
+    require_email_verification: 'false',
+    enable_sms_notifications: 'true',
+    enable_email_notifications: 'true',
+    tiebreaker_rule: 'LOWEST_CUMULATIVE_VOTES'
   })
 
   const { data } = useQuery({
@@ -28,24 +37,29 @@ export default function AdminSettingsPlatform() {
   useEffect(() => {
     if (data) {
       // Seed if they exist
-      const mMode = data.find((s: any) => s.settingKey === 'maintenance_mode')?.settingValue
-      const allowReg = data.find((s: any) => s.settingKey === 'allow_new_registrations')?.settingValue
-      const maxVotes = data.find((s: any) => s.settingKey === 'max_votes_per_device')?.settingValue
-      setFlags({
-        maintenance_mode: mMode || flags.maintenance_mode,
-        allow_new_registrations: allowReg || flags.allow_new_registrations,
-        max_votes_per_device: maxVotes || flags.max_votes_per_device
-      })
+      const getValue = (key: string) => data.find((s: any) => s.settingKey === key)?.settingValue
+      
+      setFlags(prev => ({
+        maintenance_mode: getValue('maintenance_mode') || prev.maintenance_mode,
+        allow_new_registrations: getValue('allow_new_registrations') || prev.allow_new_registrations,
+        max_votes_per_device: getValue('max_votes_per_device') || prev.max_votes_per_device,
+        daily_elimination_count: getValue('daily_elimination_count') || prev.daily_elimination_count,
+        vote_price_ngn: getValue('vote_price_ngn') || prev.vote_price_ngn,
+        max_votes_per_transaction: getValue('max_votes_per_transaction') || prev.max_votes_per_transaction,
+        min_withdrawal_amount: getValue('min_withdrawal_amount') || prev.min_withdrawal_amount,
+        enable_kyc_verification: getValue('enable_kyc_verification') || prev.enable_kyc_verification,
+        require_email_verification: getValue('require_email_verification') || prev.require_email_verification,
+        enable_sms_notifications: getValue('enable_sms_notifications') || prev.enable_sms_notifications,
+        enable_email_notifications: getValue('enable_email_notifications') || prev.enable_email_notifications,
+        tiebreaker_rule: getValue('tiebreaker_rule') || prev.tiebreaker_rule,
+      }))
     }
   }, [data])
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await adminApi.updateSettings(cycleId as string, [
-        { key: 'maintenance_mode', value: flags.maintenance_mode },
-        { key: 'allow_new_registrations', value: flags.allow_new_registrations },
-        { key: 'max_votes_per_device', value: flags.max_votes_per_device },
-      ])
+      const payload = Object.entries(flags).map(([key, value]) => ({ key, value }))
+      await adminApi.updateSettings(cycleId as string, payload)
     },
     onSuccess: () => {
       alert("Platform config saved!")
@@ -53,58 +67,84 @@ export default function AdminSettingsPlatform() {
     }
   })
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
+  const Toggle = ({ label, desc, field }: { label: string, desc: string, field: keyof typeof flags }) => (
+    <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+      <div>
+        <div className="font-medium text-[14px]">{label}</div>
+        <div className="text-xs text-gray-500">{desc}</div>
+      </div>
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" checked={flags[field] === 'true'} onChange={e => setFlags({ ...flags, [field]: e.target.checked ? 'true' : 'false' })} disabled={!cycleId} className="sr-only peer" />
+        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${field === 'maintenance_mode' ? 'peer-checked:bg-red-500' : 'peer-checked:bg-primary'} disabled:opacity-50`}></div>
+      </label>
+    </div>
+  )
 
+  const NumberInput = ({ label, desc, field }: { label: string, desc: string, field: keyof typeof flags }) => (
+    <div className="py-3">
+      <label className="block text-[14px] mb-1.5 font-medium">{label}</label>
+      <div className="text-xs text-gray-500 mb-2">{desc}</div>
+      <input type="number" value={flags[field]} onChange={e => setFlags({ ...flags, [field]: e.target.value })} disabled={!cycleId} className="w-full max-w-sm px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-950 text-sm focus:ring-primary disabled:opacity-50" />
+    </div>
+  )
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
       <div>
         <h1 className="text-[18px] font-semibold text-gray-900 dark:text-gray-100">Platform Configuration</h1>
-        <p className="text-sm text-gray-500">Global toggles for security thresholds and service modes.</p>
+        <p className="text-sm text-gray-500">Comprehensive settings for operations, financials, security, and notifications.</p>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 space-y-6">
+      {!cycleId && <div className="text-amber-600 bg-amber-50 p-3 rounded text-sm mb-4">You do not have an active cycle open. Settings are locked.</div>}
 
-        {!cycleId && <div className="text-amber-600 bg-amber-50 p-3 rounded text-sm mb-4">You do not have an active cycle open.</div>}
-
-        <div className="space-y-6">
-          {/* Toggles */}
-          <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <div className="font-medium text-[14px]">Maintenance Mode</div>
-              <div className="text-xs text-gray-500">Halts all frontend traffic and displays a maintenance banner.</div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" checked={flags.maintenance_mode === 'true'} onChange={e => setFlags({ ...flags, maintenance_mode: e.target.checked ? 'true' : 'false' })} disabled={!cycleId} className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-500 disabled:opacity-50"></div>
-            </label>
+      <div className="grid grid-cols-1 gap-6">
+        
+        {/* Operations & Core Settings */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">System Operations</h2>
+          <Toggle label="Maintenance Mode" desc="Halts all frontend traffic and displays a maintenance banner." field="maintenance_mode" />
+          <Toggle label="Allow Registrations" desc="Globally accept or reject new participant signups." field="allow_new_registrations" />
+          
+          <NumberInput label="Daily Elimination Count" desc="Number of participants to drop at the bottom of the leaderboard each day." field="daily_elimination_count" />
+          
+          <div className="py-3">
+            <label className="block text-[14px] mb-1.5 font-medium">Tiebreaker Rule</label>
+            <div className="text-xs text-gray-500 mb-2">How to decide eliminations if multiple participants have the exact same vote count.</div>
+            <select value={flags.tiebreaker_rule} onChange={e => setFlags({ ...flags, tiebreaker_rule: e.target.value })} disabled={!cycleId} className="w-full max-w-sm px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-950 text-sm focus:ring-primary disabled:opacity-50">
+              <option value="LOWEST_CUMULATIVE_VOTES">Lowest Cumulative Votes</option>
+              <option value="LATEST_REGISTRATION">Latest Registration Date</option>
+              <option value="RANDOM">Random (Coin Flip)</option>
+            </select>
           </div>
-
-          <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <div className="font-medium text-[14px]">Allow Registrations</div>
-              <div className="text-xs text-gray-500">Globally accept or reject new participant signups.</div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" checked={flags.allow_new_registrations === 'true'} onChange={e => setFlags({ ...flags, allow_new_registrations: e.target.checked ? 'true' : 'false' })} disabled={!cycleId} className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary disabled:opacity-50"></div>
-            </label>
-          </div>
-
-          {/* Values */}
-          <div className="max-w-sm py-3">
-            <label className="block text-[14px] mb-1.5 font-medium">Rate Limiting (Votes per IP/day)</label>
-            <div className="text-xs text-gray-500 mb-2">Maximum identical phone/device/IP hits allowed before auto-flagging as Fraud.</div>
-            <input type="number" value={flags.max_votes_per_device} onChange={e => setFlags({ ...flags, max_votes_per_device: e.target.value })} disabled={!cycleId} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-950 text-sm focus:ring-primary disabled:opacity-50" />
-          </div>
-
         </div>
 
-        <div className="pt-4">
+        {/* Financials & Limits */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">Financials & Limits</h2>
+          <NumberInput label="Vote Price (₦)" desc="The unit cost of a single vote." field="vote_price_ngn" />
+          <NumberInput label="Max Votes Per Transaction" desc="Cap on bulk voting to prevent payment gateway issues." field="max_votes_per_transaction" />
+          <NumberInput label="Minimum Withdrawal Amount (₦)" desc="Threshold for participants to cash out their earnings." field="min_withdrawal_amount" />
+        </div>
+
+        {/* Security & Notifications */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">Security & Communications</h2>
+          <NumberInput label="Rate Limiting (Votes per IP/day)" desc="Maximum identical phone/device/IP hits allowed before auto-flagging as Fraud." field="max_votes_per_device" />
+          
+          <Toggle label="Enable KYC Verification" desc="Require contestants to pass identity verification before payouts." field="enable_kyc_verification" />
+          <Toggle label="Require Email Verification" desc="Force new voters to confirm email before casting their first vote." field="require_email_verification" />
+          
+          <Toggle label="Enable SMS Notifications" desc="Globally enable or disable automated SMS alerts via provider." field="enable_sms_notifications" />
+          <Toggle label="Enable Email Notifications" desc="Globally enable or disable automated email receipts and alerts." field="enable_email_notifications" />
+        </div>
+
+        <div className="sticky bottom-4 z-10 flex justify-end">
           <button
             onClick={() => saveMutation.mutate()}
             disabled={!cycleId || saveMutation.isPending}
-            className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-xl text-sm font-bold shadow-lg transition-colors disabled:opacity-50"
           >
-            {saveMutation.isPending ? 'Saving...' : 'Deploy Configuration'}
+            {saveMutation.isPending ? 'Saving Configuration...' : 'Deploy Global Configuration'}
           </button>
         </div>
       </div>

@@ -41,6 +41,7 @@ export default function ParticipantEditProfileScreen() {
     twitterUrl: '',
     tiktokUrl: '',
     youtubeUrl: '',
+    embeddedVideoUrl: '',
   })
 
   const [modalVisible, setModalVisible] = useState(false)
@@ -58,6 +59,7 @@ export default function ParticipantEditProfileScreen() {
         twitterUrl: participantData.twitterUrl || '',
         tiktokUrl: participantData.tiktokUrl || '',
         youtubeUrl: participantData.youtubeUrl || '',
+        embeddedVideoUrl: participantData.embeddedVideoUrl || '',
       })
     }
   }, [participantData])
@@ -187,7 +189,21 @@ export default function ParticipantEditProfileScreen() {
 
             {/* Social Presence Card */}
             <View style={s.card}>
-              <Text style={s.cardTitle}>SOCIAL PRESENCE</Text>
+              <Text style={s.cardTitle}>SOCIAL PRESENCE & FEATURED VIDEO</Text>
+              
+              <Text style={s.label}>Featured Video Link (YouTube/TikTok/Instagram)</Text>
+              <TextInput
+                style={s.input}
+                value={form.embeddedVideoUrl}
+                onChangeText={(v) => setForm({ ...form, embeddedVideoUrl: v })}
+                placeholder="Paste the video link here to show it on your profile"
+                placeholderTextColor={textSecondary}
+                autoCapitalize="none"
+              />
+              <Text style={{ fontSize: 11, color: textSecondary, marginTop: 4, marginBottom: 16 }}>
+                This video will play directly on your voting page for fans to watch.
+              </Text>
+
               <View style={s.socialContainer}>
                 {[
                   { key: 'instagramUrl', icon: 'logo-instagram', color: '#E1306C', label: 'Instagram' },
@@ -211,6 +227,8 @@ export default function ParticipantEditProfileScreen() {
                 ))}
               </View>
             </View>
+
+            {/* Read-Only System Records */}
 
             {/* Read-Only System Records */}
             <View style={s.card}>
@@ -376,6 +394,25 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: bg, paddingHorizontal: 15, borderRadius: 15, marginBottom: 20, borderWidth: 1, borderColor: border },
     searchInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 16, color: textPrimary },
     countryItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: border },
-    countryText: { fontSize: 16, color: textPrimary }
+    countryText: { fontSize: 16, color: textPrimary },
+    
+    infoText: { fontSize: 12, color: textSecondary, marginTop: 8, marginBottom: 16, lineHeight: 18 },
+    addVideoBox: { marginBottom: 16 },
+    miniInput: {
+      backgroundColor: bg, borderWidth: 1, borderColor: border,
+      borderRadius: 10, padding: 10, fontSize: 14, color: textPrimary, marginBottom: 8
+    },
+    addBtn: {
+      width: 50, height: 48, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center'
+    },
+    videoList: { marginTop: 8 },
+    videoItem: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: bg, padding: 12, borderRadius: 12, marginBottom: 8,
+      borderWidth: 1, borderColor: border
+    },
+    videoItemInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    videoItemTitle: { fontSize: 13, color: textPrimary, flex: 1 }
   })
 }

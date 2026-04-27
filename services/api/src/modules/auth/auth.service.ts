@@ -9,6 +9,7 @@ import { generateOtp, hashValue } from '../../utils/crypto'
 import { sendSms } from '../../utils/sms'
 import { emailTransporter } from '../../utils/emailTransporter'
 import { logger } from '../../utils/logger'
+import * as SecurityService from '../security/security.service'
 
 interface RegisterInput {
   fullName: string
@@ -80,7 +81,7 @@ export async function registerUser(input: RegisterInput) {
   })
   logger.info('[AuthService.registerUser] user created', { userId: user.id, email })
 
-  const tokens = generateTokens(user.id, user.role)
+  const tokens = generateTokens(user.id, user.role, 0)
   logger.debug('[AuthService.registerUser] tokens generated', { userId: user.id })
 
   logger.debug('[AuthService.registerUser] sending registration OTP', { phone: normalizedPhone, email })
@@ -127,18 +128,47 @@ export async function loginUser(email: string, password: string, ip: string) {
     throw new AppError('Invalid credentials', 401)
   }
 
+  // Check account lockout
+  if (user.isLocked) {
+    if (user.lockExpiresAt && new Date() < user.lockExpiresAt) {
+      logger.warn('[AuthService.loginUser] account locked', { email, userId: user.id, ip })
+      throw new AppError('Account is temporarily locked due to multiple failed attempts. Please try again later.', 423)
+    } else {
+      // Lock expired, unlock automatically
+      await prisma.user.update({ where: { id: user.id }, data: { isLocked: false, lockExpiresAt: null } })
+    }
+  }
+
   logger.debug('[AuthService.loginUser] comparing password', { userId: user.id })
   const valid = await bcrypt.compare(password, user.passwordHash)
   if (!valid) {
     logger.warn('[AuthService.loginUser] wrong password', { email, userId: user.id, ip })
+    SecurityService.trackFailedLogin(email, ip).catch(() => {})
     throw new AppError('Invalid credentials', 401)
   }
 
-  await prisma.user.update({
+  // Detect unusual IP changes for admins
+  if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && user.lastLoginAt) {
+    // Basic IP check - in a real app you might use GeoIP here
+    // For now, if IP is different from last (we don't store last IP, but we could)
+    // Actually, let's just log every admin login from a new IP if we had historical data.
+    // For now, let's just report the login to the owner as a precaution.
+    SecurityService.reportSecurityIncident(
+      'ADMIN_LOGIN',
+      'LOW',
+      `Admin login detected for ${user.email} from IP: ${ip}`,
+      { email: user.email, ip, userAgent: 'N/A' } // req.headers['user-agent'] is not available in service
+    ).catch(() => {})
+  }
+
+  const updatedUser = await prisma.user.update({
     where: { id: user.id },
-    data: { lastLoginAt: new Date() },
+    data: { 
+      lastLoginAt: new Date(),
+      tokenVersion: { increment: 1 }
+    },
   })
-  logger.debug('[AuthService.loginUser] lastLoginAt updated', { userId: user.id })
+  logger.debug('[AuthService.loginUser] lastLoginAt and tokenVersion updated', { userId: user.id, newVersion: updatedUser.tokenVersion })
 
   await prisma.auditLog.create({
     data: {
@@ -151,7 +181,7 @@ export async function loginUser(email: string, password: string, ip: string) {
   })
   logger.debug('[AuthService.loginUser] audit log written', { userId: user.id, ip })
 
-  const tokens = generateTokens(user.id, user.role)
+  const tokens = generateTokens(updatedUser.id, updatedUser.role, updatedUser.tokenVersion)
   logger.info('[AuthService.loginUser] login successful', { userId: user.id, email, role: user.role })
 
   const { passwordHash, ...safeUser } = user
@@ -321,7 +351,7 @@ export async function refreshAccessToken(refreshToken: string) {
       throw new AppError('User not found', 401)
     }
 
-    const tokens = generateTokens(user.id, user.role)
+    const tokens = generateTokens(user.id, user.role, user.tokenVersion)
     logger.info('[AuthService.refreshAccessToken] tokens refreshed', { userId: user.id, role: user.role })
     return tokens
   } catch (err: any) {
@@ -423,19 +453,34 @@ export async function sendEmailVerification(userId: string) {
   logger.info('[AuthService.sendEmailVerification] verification email sent', { userId, email: user.email })
 }
 
-function generateTokens(userId: string, role: string) {
-  logger.debug('[AuthService.generateTokens] generating tokens', { userId, role })
+function generateTokens(userId: string, role: string, tokenVersion: number = 0) {
+  logger.debug('[AuthService.generateTokens] generating tokens', { userId, role, tokenVersion })
+  
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+  
+  // Admins have strict expiration (24h), normal users are long-lived (365d)
+  const accessExpires = isAdmin ? '24h' : '365d'
+  const refreshExpires = isAdmin ? '7d' : '730d'
+
   const accessToken = jwt.sign(
-    { userId, role },
+    { userId, role, tokenVersion },
     process.env.JWT_SECRET!,
-    { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'] }
+    { expiresIn: accessExpires as jwt.SignOptions['expiresIn'] }
   )
   const refreshToken = jwt.sign(
-    { userId },
+    { userId, tokenVersion },
     process.env.JWT_REFRESH_SECRET!,
-    { expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '30d') as jwt.SignOptions['expiresIn'] }
+    { expiresIn: refreshExpires as jwt.SignOptions['expiresIn'] }
   )
   return { accessToken, refreshToken }
+}
+
+export async function logoutAllDevices(userId: string) {
+  logger.info('[AuthService.logoutAllDevices] incrementing tokenVersion', { userId })
+  await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  })
 }
 
 export async function requestAccountDeletion(userId: string, email: string, ip: string) {
@@ -475,6 +520,17 @@ export async function confirmAccountDeletion(userId: string, otpCode: string, ip
     }
   })
 
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'DELETE_ACCOUNT',
+      entityType: 'User',
+      entityId: userId,
+      ipAddress: ip,
+      userAgent
+    }
+  })
+
   logger.info('[AuthService.confirmAccountDeletion] completion success', { userId })
 }
 
@@ -489,10 +545,22 @@ export async function changeEmail(userId: string, newEmail: string) {
     throw new AppError('Email address is already in use', 409)
   }
 
+  const oldUser = await prisma.user.findUnique({ where: { id: userId } })
   const user = await prisma.user.update({
     where: { id: userId },
     data: { email: newEmail, emailVerified: false },
     select: { id: true, email: true, emailVerified: true },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'CHANGE_EMAIL',
+      entityType: 'User',
+      entityId: userId,
+      oldValue: { email: oldUser?.email },
+      newValue: { email: user.email }
+    }
   })
 
   // Send verification to new email

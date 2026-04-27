@@ -343,7 +343,7 @@ export default function VotePage() {
                       <div className="vp-field">
                         <label className="vp-label">
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.71 3.53 2 2 0 0 1 3.67 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6 6l.86-.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z" /></svg>
-                          Phone Number
+                          Phone Number (Optional)
                         </label>
                         <input type="tel" placeholder="+234 800 000 0000" value={voterPhone} onChange={e => setVoterPhone(e.target.value)} className="vp-input" />
                       </div>
@@ -360,7 +360,7 @@ export default function VotePage() {
                       By proceeding, you agree to our <a href="/terms" className="text-primary font-semibold hover:underline">Terms</a>. All votes are final and non-refundable.
                     </p>
 
-                    <button onClick={() => sendOtpMutation.mutate()} disabled={!voterPhone || !voterEmail || sendOtpMutation.isPending} className="vp-btn-primary">
+                    <button onClick={() => sendOtpMutation.mutate()} disabled={!voterEmail || sendOtpMutation.isPending} className="vp-btn-primary">
                       {sendOtpMutation.isPending ? <span className="vp-spinner" /> : <>Send Verification Code <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg></>}
                     </button>
 

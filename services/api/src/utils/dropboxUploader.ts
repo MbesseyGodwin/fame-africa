@@ -48,7 +48,7 @@ async function refreshAccessToken(): Promise<string> {
 }
 
 // ── Get a valid access token (refresh if expired) ────────────────────────────
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   if (cachedAccessToken && Date.now() < tokenExpiresAt) {
     return cachedAccessToken;
   }
@@ -89,7 +89,7 @@ export async function uploadToDropbox(
         }),
       },
       maxBodyLength: Infinity, // allow large files
-      timeout: 120_000,  // 2-minute timeout
+      timeout: 600_000,  // 10-minute timeout for large video files
     }
   );
 

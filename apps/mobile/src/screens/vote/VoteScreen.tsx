@@ -1,22 +1,59 @@
 // apps/mobile/src/screens/vote/VoteScreen.tsx
 
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions,
+  Linking, Modal, SafeAreaView
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTheme } from '../../context/ThemeContext'
-import { participantsApi, votingApi, sponsorsApi, stansApi } from '../../utils/api'
+import { participantsApi, votingApi, sponsorsApi, stansApi, paymentsApi } from '../../utils/api'
 import VideoPlayer from '../../components/VideoPlayer'
 import { Ionicons } from '@expo/vector-icons'
 import SponsorTicker from '../../components/SponsorTicker'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
+import { WebView } from 'react-native-webview'
+import ViewShot from 'react-native-view-shot'
+import * as Sharing from 'expo-sharing'
+import { ParticipantCampaignCard } from '../../components/ParticipantCampaignCard'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 
 const { width } = Dimensions.get('window')
+
+function getEmbedUrl(url: string): string | null {
+  if (!url) return null
+
+  // YouTube
+  if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+    const id = url.includes('v=') ? url.split('v=')[1]?.split('&')[0] : url.split('/').pop()
+    return `https://www.youtube.com/embed/${id}?autoplay=0&rel=0`
+  }
+
+  // TikTok
+  if (url.includes('tiktok.com')) {
+    const videoId = url.split('/video/')[1]?.split('?')[0]
+    if (videoId) return `https://www.tiktok.com/embed/v2/${videoId}`
+  }
+
+  // Instagram
+  if (url.includes('instagram.com/reels/') || url.includes('instagram.com/reel/') || url.includes('instagram.com/p/')) {
+    let cleanUrl = url.split('?')[0]
+    if (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1)
+    return `${cleanUrl}/embed`
+  }
+
+  if (url.includes('facebook.com') || url.includes('fb.watch')) {
+    const encodedUrl = encodeURIComponent(url)
+    return `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=500`
+  }
+
+  return url // Fallback
+}
 
 type Step = 'form' | 'otp' | 'success'
 
@@ -25,6 +62,8 @@ export default function VoteScreen() {
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets()
+  const viewShotRef = useRef<ViewShot>(null)
 
   const [step, setStep] = useState<Step>('form')
   const [phone, setPhone] = useState('')
@@ -32,6 +71,9 @@ export default function VoteScreen() {
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const [webModalVisible, setWebModalVisible] = useState(false)
+  const [activeWebUrl, setActiveWebUrl] = useState('')
 
   // ── Data Fetching ───────────────────────────────────────────
   const { data: pRes, isLoading: participantLoading } = useQuery({
@@ -53,10 +95,15 @@ export default function VoteScreen() {
     staleTime: 1000 * 60 * 2, // 2 mins
   })
 
+  const { data: packagesRes } = useQuery({
+    queryKey: ['mega-vote-packages'],
+    queryFn: () => paymentsApi.getPackages(),
+  })
+
   const participant = pRes?.data?.data
   const fans = fansRes?.data?.data ?? []
   const ad = adRes?.data?.data || ""
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   // ── Mutations ───────────────────────────────────────────────
   const stanMutation = useMutation({
@@ -68,8 +115,8 @@ export default function VoteScreen() {
   })
 
   async function handleSendOtp() {
-    if (!phone.trim() || !email.trim()) {
-      setError('Please enter your phone number and email')
+    if (!email.trim()) {
+      setError('Please enter your email address')
       return
     }
     setError('')
@@ -98,6 +145,45 @@ export default function VoteScreen() {
       setError(err.response?.data?.message || 'Invalid OTP. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+  async function handleShareCampaign() {
+    try {
+      const uri = await (viewShotRef.current as any)?.capture?.()
+      if (uri) {
+        await Sharing.shareAsync(uri, {
+          dialogTitle: `Support ${participant.displayName} on Fame Africa!`,
+          mimeType: 'image/png',
+        })
+      }
+    } catch (error) {
+      console.error('Error sharing campaign card:', error)
+      Alert.alert('Sharing Failed', 'Could not generate sharing card.')
+    }
+  }
+
+  async function handleMegaVote(pkg: any) {
+    const reference = `MV-${Math.floor(Math.random() * 1000000000)}`
+    try {
+      await paymentsApi.initializeMegaVote({
+        participantId: participant.id,
+        amount: pkg.price,
+        currency: 'NGN',
+        reference,
+        voteCount: pkg.voteCount
+      })
+
+      Alert.alert(
+        'Mega Vote Initialized',
+        `You are about to buy ${pkg.voteCount} votes for ₦${pkg.price}.\n\nReference: ${reference}`,
+        [{
+          text: 'Continue to Payment', onPress: () => {
+            Linking.openURL(`https://fame-africa-web.vercel.app/vote/${slug}?mega=true&ref=${reference}`)
+          }
+        }]
+      )
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to initialize payment.')
     }
   }
 
@@ -139,6 +225,14 @@ export default function VoteScreen() {
           </TouchableOpacity>
 
           <View style={s.heroContent}>
+            <TouchableOpacity
+              style={s.shareCampaignBtn}
+              onPress={handleShareCampaign}
+            >
+              <Ionicons name="share-social" size={18} color="#fff" />
+              <Text style={s.shareCampaignText}>SHARE CARD</Text>
+            </TouchableOpacity>
+
             <View style={s.heroAvatarFrame}>
               <Image
                 source={{ uri: participant.photoUrl }}
@@ -192,6 +286,88 @@ export default function VoteScreen() {
             </View>
           )}
 
+          {/* ── Social Video Gallery ────────────────── */}
+          {(participant.videos && participant.videos.length > 0) ? (
+            <View style={{ marginBottom: 20 }}>
+              <Text style={s.sectionTitle}>VIDEO GALLERY</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={width - 40}
+                decelerationRate="fast"
+                contentContainerStyle={{ gap: 15 }}
+              >
+                {participant.videos.map((vid: any) => (
+                  <View key={vid.id} style={[s.embeddedWrapper, { width: width - 70, marginBottom: 0 }]}>
+                    <View style={s.videoOverlay}>
+                      <Text style={s.videoLabel}>{vid.title || vid.platform.toUpperCase()}</Text>
+                    </View>
+                    <WebView
+                      source={{ uri: getEmbedUrl(vid.url) || '' }}
+                      style={s.webview}
+                      javaScriptEnabled={true}
+                      domStorageEnabled={true}
+                      allowsFullscreenVideo={true}
+                      scrollEnabled={false}
+                      userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          ) : (
+            participant.embeddedVideoUrl && (
+              <View style={s.embeddedWrapper}>
+                <View style={s.videoOverlay}>
+                  <Text style={s.videoLabel}>FEATURED VIDEO</Text>
+                </View>
+                <WebView
+                  source={{ uri: getEmbedUrl(participant.embeddedVideoUrl) || '' }}
+                  style={s.webview}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  allowsFullscreenVideo={true}
+                  scrollEnabled={false}
+                  userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+                />
+              </View>
+            )
+          )}
+
+          {/* ── Social Hub Section ──────────────────────────── */}
+          <View style={s.socialHub}>
+            <Text style={s.socialHubTitle}>TALENT SOCIALS</Text>
+            <View style={s.socialGrid}>
+              {[
+                { key: 'instagramUrl', icon: 'logo-instagram', color: '#E1306C', label: 'Instagram' },
+                { key: 'tiktokUrl', icon: 'logo-tiktok', color: '#000000', label: 'TikTok' },
+                { key: 'youtubeUrl', icon: 'logo-youtube', color: '#FF0000', label: 'YouTube' },
+                { key: 'twitterUrl', icon: 'logo-twitter', color: '#1DA1F2', label: 'Twitter' }
+              ].map(social => {
+                const url = participant[social.key]
+                if (!url) return null
+                return (
+                  <TouchableOpacity
+                    key={social.key}
+                    style={[s.socialButton, { backgroundColor: social.color + '10' }]}
+                    onPress={() => {
+                      if (url) {
+                        setActiveWebUrl(url)
+                        setWebModalVisible(true)
+                      }
+                    }}
+                  >
+                    <Ionicons name={social.icon as any} size={20} color={social.color} />
+                    <Text style={[s.socialLabelText, { color: social.color }]}>{social.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            {(!participant.instagramUrl && !participant.tiktokUrl && !participant.youtubeUrl && !participant.twitterUrl) && (
+              <Text style={s.noSocialsText}>No additional links provided by contestant.</Text>
+            )}
+          </View>
+
           <SponsorTicker cycleId={participant.cycleId} />
 
           {/* Ad banner */}
@@ -219,7 +395,13 @@ export default function VoteScreen() {
           {/* ── Voting Steps ───────────────────────────────────── */}
           {step === 'form' && (
             <View style={s.card}>
-              <Text style={s.cardTitle}>Cast your vote for {participant.displayName}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={s.cardTitle}>Cast your vote</Text>
+                <InfoTooltip
+                  title="Daily Voting"
+                  content="Each fan can cast one free vote per contestant every 24 hours. Enter your details to receive a verification OTP to secure your vote."
+                />
+              </View>
 
               {participant.cycle?.status !== 'VOTING_OPEN' ? (
                 <View style={s.lockedContainer}>
@@ -244,7 +426,7 @@ export default function VoteScreen() {
                   <Text style={s.instruction}>Enter your details below to verify your identity</Text>
 
                   <View style={s.inputGroup}>
-                    <Text style={s.inputLabel}>Phone Number</Text>
+                    <Text style={s.inputLabel}>Phone Number (Optional)</Text>
                     <TextInput
                       style={s.input}
                       value={phone}
@@ -290,6 +472,39 @@ export default function VoteScreen() {
                   </View>
                 </View>
               )}
+            </View>
+          )}
+
+          {/* ── Mega Vote Section ──────────────────────────────── */}
+          {step === 'form' && participant?.cycle?.status === 'VOTING_OPEN' && (
+            <View style={s.card}>
+              <View style={s.megaHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="flash" size={20} color="#FFD700" />
+                  <Text style={s.cardTitle}>Mega Votes</Text>
+                </View>
+                <InfoTooltip
+                  title="What are Mega Votes?"
+                  content="Mega Votes allow you to cast multiple votes at once to boost your favorite contestant instantly! These are paid packages and help participants avoid elimination during the 'hustle' phase."
+                />
+              </View>
+              <Text style={s.instruction}>Boost {participant.displayName}'s ranking instantly with a vote bundle!</Text>
+
+              <View style={s.packagesGrid}>
+                {packagesRes?.data?.data?.map((pkg: any) => (
+                  <TouchableOpacity
+                    key={pkg.id}
+                    style={[s.packageCard, { borderColor: border }]}
+                    onPress={() => handleMegaVote(pkg)}
+                  >
+                    <Text style={s.packageName}>{pkg.name}</Text>
+                    <Text style={[s.packageVotes, { color: theme.primaryColor }]}>{pkg.voteCount} Votes</Text>
+                    <View style={[s.packagePrice, { backgroundColor: theme.primaryColor + '10' }]}>
+                      <Text style={[s.priceText, { color: theme.primaryColor }]}>₦{pkg.price}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           )}
 
@@ -386,11 +601,87 @@ export default function VoteScreen() {
           </View>
         </View>
       </ScrollView>
+      {loading && (
+        <View style={s.loaderOverlay}>
+          <ActivityIndicator size="large" color={theme.primaryColor} />
+          <Text style={s.loaderOverlayText}>
+            {step === 'otp' ? 'Casting your vote...' : 'Processing...'}
+          </Text>
+        </View>
+      )}
+
+      {/* ── Hidden Campaign Card for Sharing ────────────────── */}
+      <View style={{ position: 'absolute', left: -5000 }}>
+        <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
+          <ParticipantCampaignCard participant={participant} />
+        </ViewShot>
+      </View>
+      <Modal
+        visible={webModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setWebModalVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+          <View style={s.modalHeader}>
+            <TouchableOpacity onPress={() => setWebModalVisible(false)} style={s.modalCloseBtn}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={s.modalTitle} numberOfLines={1}>{activeWebUrl}</Text>
+          </View>
+          <WebView
+            source={{ uri: activeWebUrl }}
+            style={{ flex: 1 }}
+            userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+            startInLoadingState={true}
+            domStorageEnabled={true}
+            javaScriptEnabled={true}
+            injectedJavaScript={`
+              (function() {
+                // Hide common header/footer/app-banners on Instagram/TikTok/YouTube
+                const selectors = [
+                  'header', 'footer', '.nav-bar', '.login-container',
+                  '[role="banner"]', '[role="navigation"]',
+                  '.upsell-banner', '.app-upsell', '.Header', '.Footer'
+                ];
+                selectors.forEach(s => {
+                  const el = document.querySelector(s);
+                  if (el) el.style.display = 'none';
+                });
+                // Force video to fill space if possible
+                const video = document.querySelector('video');
+                if (video) {
+                  video.style.width = '100%';
+                  video.style.height = 'auto';
+                }
+              })();
+              true;
+            `}
+            renderLoading={() => (
+              <ActivityIndicator style={s.modalLoader} color={theme.primaryColor} size="large" />
+            )}
+            onShouldStartLoadWithRequest={(request) => {
+              // Block intent/market/app store redirects to keep user in-app
+              const isExternal = request.url.startsWith('intent://') ||
+                request.url.startsWith('market://') ||
+                request.url.startsWith('itms-apps://') ||
+                request.url.includes('applink.instagram.com') ||
+                request.url.includes('app-site-association')
+
+              if (isExternal) {
+                return false
+              }
+              return true
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
+
     </KeyboardAvoidingView>
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: bg },
     loaderFull: { flex: 1, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' },
@@ -413,7 +704,7 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     },
     backIcon: {
       position: 'absolute',
-      top: 50,
+      top: insets.top + 10,
       left: 16,
       zIndex: 10,
       width: 44,
@@ -427,6 +718,23 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
       alignItems: 'center',
       paddingBottom: 50,
       paddingHorizontal: 20,
+    },
+    shareCampaignBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.3)',
+    },
+    shareCampaignText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '900',
     },
     heroAvatarFrame: {
       width: 90,
@@ -474,6 +782,14 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
 
     // ── Content ───────────────────────────────────────────────
     contentSection: { padding: 16, marginTop: -30 },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: textSecondary,
+      letterSpacing: 1,
+      marginBottom: 16,
+      textTransform: 'uppercase'
+    },
     videoWrapper: {
       borderRadius: 20,
       overflow: 'hidden',
@@ -492,6 +808,63 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
       borderRadius: 6,
     },
     videoLabel: { color: '#fff', fontSize: 10, fontWeight: '800' },
+
+    embeddedWrapper: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: '#1A1A1A',
+      marginBottom: 20,
+      height: 400, // standard aspect ratio for social embeds
+      shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.3, shadowRadius: 20, elevation: 10,
+      borderWidth: 1,
+      borderColor: border,
+    },
+    webview: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
+
+    // Social Hub
+    socialHub: {
+      backgroundColor: surface,
+      borderRadius: 20,
+      padding: 16,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: border,
+    },
+    socialHubTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: textSecondary,
+      letterSpacing: 1,
+      marginBottom: 16,
+    },
+    socialGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    socialButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 12,
+      minWidth: '45%',
+    },
+    socialLabelText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    noSocialsText: {
+      fontSize: 13,
+      color: textSecondary,
+      textAlign: 'center',
+      fontStyle: 'italic',
+    },
 
     adBanner: {
       backgroundColor: surface,
@@ -545,6 +918,7 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     primaryBtn: {
       backgroundColor: theme.buttonColor,
       height: 54,
+      width: '100%',
       borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
@@ -555,6 +929,23 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
       shadowRadius: 8,
       elevation: 4,
     },
+
+    // Mega Votes
+    megaHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    packagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    packageCard: {
+      flex: 1,
+      minWidth: '45%',
+      backgroundColor: bg,
+      borderRadius: 16,
+      padding: 15,
+      borderWidth: 1,
+      alignItems: 'center',
+    },
+    packageName: { fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase' },
+    packageVotes: { fontSize: 18, fontWeight: '900', marginVertical: 4 },
+    packagePrice: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    priceText: { fontSize: 13, fontWeight: '800' },
     btnDisabled: { opacity: 0.6 },
     primaryBtnText: { color: theme.textOnPrimary, fontSize: 16, fontWeight: '800' },
 
@@ -644,7 +1035,7 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     // ── Fans Section ──────────────────────────────────────────
     fansSection: { marginTop: 10, marginBottom: 40 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-    sectionTitle: { fontSize: 16, fontWeight: '800', color: textPrimary },
+    // sectionTitle: { fontSize: 16, fontWeight: '800', color: textPrimary },
     badgeLabel: { backgroundColor: theme.accentColor, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
     badgeLabelText: { color: theme.primaryColor, fontSize: 10, fontWeight: '800' },
     fansContainer: { backgroundColor: surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: border },
@@ -656,6 +1047,46 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     fanName: { fontSize: 14, fontWeight: '700', color: textPrimary },
     fanVotes: { fontSize: 12, color: textSecondary, marginTop: 2 },
     emptyFans: { padding: 30, backgroundColor: surface, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: border },
-    emptyFansText: { color: textSecondary, fontSize: 14, fontWeight: '600' }
+    emptyFansText: { color: textSecondary, fontSize: 14, fontWeight: '600' },
+    loaderOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(255,255,255,0.85)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 100,
+    },
+    loaderOverlayText: {
+      marginTop: 16,
+      fontSize: 16,
+      fontWeight: '700',
+      color: textPrimary,
+    },
+
+    // Modal
+    modalHeader: {
+      position: 'absolute',
+      top: insets.top, left: 0, right: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      zIndex: 10,
+    },
+    modalCloseBtn: {
+      width: 40, height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalTitle: {
+      display: 'none',
+    },
+    modalLoader: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      marginLeft: -20,
+      marginTop: -20,
+    },
   })
 }

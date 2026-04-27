@@ -54,11 +54,24 @@ usersRouter.put('/me', authenticate,
   validateRequest,
   async (req: any, res: any, next: any) => {
     try {
+      const oldUser = await prisma.user.findUnique({ where: { id: req.user.id } })
       const { fullName, displayName, bio } = req.body
       const user = await prisma.user.update({
         where: { id: req.user.id },
         data: { ...(fullName && { fullName }), ...(displayName && { displayName }), ...(bio !== undefined && { bio }) },
         select: { id: true, email: true, fullName: true, displayName: true, bio: true, photoUrl: true },
+      })
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user.id,
+          action: 'UPDATE_PROFILE',
+          entityType: 'User',
+          entityId: user.id,
+          oldValue: { fullName: oldUser?.fullName, displayName: oldUser?.displayName, bio: oldUser?.bio },
+          newValue: { fullName: user.fullName, displayName: user.displayName, bio: user.bio },
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent']
+        }
       })
       return ApiResponse.success(res, user, 'Profile updated')
     } catch (error) { next(error) }
@@ -76,6 +89,17 @@ usersRouter.put('/me/preferences', authenticate, async (req: any, res: any, next
       where: { userId: req.user.id },
       create: { userId: req.user.id, ...allowedPrefs },
       update: allowedPrefs,
+    })
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'UPDATE_PREFERENCES',
+        entityType: 'UserPreference',
+        entityId: prefs.id,
+        newValue: allowedPrefs,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      }
     })
     return ApiResponse.success(res, prefs, 'Preferences saved')
   } catch (error) { next(error) }
@@ -112,6 +136,18 @@ usersRouter.post('/me/photo', authenticate, upload.single('photo') as any, async
     // Return fresh temp link for immediate UI update
     const tempUrl = await getTemporaryLink(dropboxPath)
     
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'UPDATE_PHOTO',
+        entityType: 'User',
+        entityId: user.id,
+        newValue: { photoUrl: dropboxPath },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      }
+    })
+
     return ApiResponse.success(res, { photoUrl: tempUrl }, 'Photo uploaded successfully')
   } catch (error) {
     next(error)
@@ -141,6 +177,17 @@ usersRouter.put('/me/password', authenticate,
         data: { passwordHash: hashedPassword },
       })
 
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user.id,
+          action: 'CHANGE_PASSWORD',
+          entityType: 'User',
+          entityId: user.id,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent']
+        }
+      })
+
       return ApiResponse.success(res, null, 'Password changed successfully')
     } catch (error) { next(error) }
   }
@@ -160,10 +207,24 @@ usersRouter.put('/me/phone', authenticate,
       const existing = await prisma.user.findFirst({ where: { phone, id: { not: req.user.id } } })
       if (existing) return ApiResponse.error(res, 'Phone number already in use', 409)
 
+      const oldUser = await prisma.user.findUnique({ where: { id: req.user.id } })
       const user = await prisma.user.update({
         where: { id: req.user.id },
         data: { phone, phoneVerified: false },
         select: { id: true, phone: true, phoneVerified: true },
+      })
+
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user.id,
+          action: 'UPDATE_PHONE',
+          entityType: 'User',
+          entityId: user.id,
+          oldValue: { phone: oldUser?.phone },
+          newValue: { phone: user.phone },
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent']
+        }
       })
 
       return ApiResponse.success(res, user, 'Phone number updated. Please verify your new number.')

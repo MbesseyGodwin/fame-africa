@@ -5,17 +5,20 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, RefreshControl
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { participantsApi } from '../../utils/api'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 
 
 export default function ProfileScreen() {
   const { user, signOut, isAuthenticated, refreshUser } = useAuth()
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const [refreshing, setRefreshing] = useState(false)
   const [aiAdvice, setAiAdvice] = useState<any>(null)
   const [loadingAdvice, setLoadingAdvice] = useState(true)
@@ -49,7 +52,7 @@ export default function ProfileScreen() {
     setRefreshing(false)
   }
 
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   if (!isAuthenticated) {
     return (
@@ -83,9 +86,14 @@ export default function ProfileScreen() {
 
       {/* ── Profile header ─────────────────────────── */}
       <View style={s.header}>
-        <TouchableOpacity style={s.refreshIconBtn} onPress={handleRefresh} disabled={refreshing}>
-          <Ionicons name="refresh" size={24} color={refreshing ? theme.primaryColor : textSecondary} />
-        </TouchableOpacity>
+        <View style={{ position: 'absolute', left: 2, right: 2, flexDirection: 'row', justifyContent: 'space-between', zIndex: 10 }}>
+          <TouchableOpacity style={s.backIconBtn} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color={theme.primaryColor} />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.refreshIconBtn} onPress={handleRefresh} disabled={refreshing}>
+            <Ionicons name="refresh" size={24} color={refreshing ? theme.primaryColor : textSecondary} />
+          </TouchableOpacity>
+        </View>
         <View style={s.avatar}>
           <Text style={s.avatarText}>{initials}</Text>
         </View>
@@ -94,6 +102,11 @@ export default function ProfileScreen() {
         <View style={s.rolePill}>
           <Text style={s.roleText}>{user?.role || 'Voter'}</Text>
         </View>
+        <InfoTooltip
+          title="Your Profile"
+          content="This is your personal dashboard. Participants can see AI-generated campaign advice here. Fans can see their stans and past votes. Make sure your role is correct to access the right features!"
+          style={{ marginTop: 10 }}
+        />
       </View>
 
       {/* ── AI Insights ────────────────────────────── */}
@@ -205,6 +218,16 @@ export default function ProfileScreen() {
               textSecondary={textSecondary}
             />
             <MenuItem
+              icon="images"
+              iconBg="#F5E6FF"
+              iconColor="#9C27B0"
+              label="Video Portfolio"
+              onPress={() => router.push('/participants/gallery')}
+              border={border}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+            <MenuItem
               icon="trending-up"
               iconBg="#E6F1FB"
               iconColor="#185FA5"
@@ -215,7 +238,7 @@ export default function ProfileScreen() {
               textSecondary={textSecondary}
             />
             <MenuItem
-              icon="exit-run"
+              icon="exit-outline"
               iconBg="#FCEBEB"
               iconColor="#A32D2D"
               label="Withdraw from Competition"
@@ -362,15 +385,48 @@ const menuStyles = StyleSheet.create({
 
 function makeStyles(
   theme: any, bg: string, surface: string,
-  textPrimary: string, textSecondary: string, border: string, pad: number
+  textPrimary: string, textSecondary: string, border: string, pad: number, insets: any
 ) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: bg },
     content: { padding: 16, paddingBottom: 48 },
 
     // Header
-    header: { alignItems: 'center', marginBottom: 24, paddingTop: 16, position: 'relative' },
-    refreshIconBtn: { position: 'absolute', right: 0, top: 16, padding: 8 },
+    header: { alignItems: 'center', marginBottom: 24, paddingTop: insets.top + 10, position: 'relative' },
+    refreshIconBtn: {
+      position: 'absolute', right: 0,
+      top: insets.top + 10,
+      zIndex: 10,
+      backgroundColor: theme.primaryColor + '18',
+      marginLeft: 10,
+      padding: 8,
+      borderRadius: 20,
+      marginRight: 10,
+      marginTop: 10,
+      marginBottom: 10,
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    backIconBtn: {
+      position: 'absolute', left: 0,
+      top: insets.top + 10,
+      zIndex: 10,
+      backgroundColor: theme.primaryColor + '18',
+      marginLeft: 10,
+      padding: 8,
+      borderRadius: 20,
+      marginRight: 10,
+      marginTop: 10,
+      marginBottom: 10,
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
     avatar: {
       width: 80, height: 80, borderRadius: 40,
       backgroundColor: theme.accentColor,

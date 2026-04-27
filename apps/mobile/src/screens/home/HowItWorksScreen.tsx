@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../context/ThemeContext'
 import { Ionicons } from '@expo/vector-icons'
@@ -9,7 +10,8 @@ import { Ionicons } from '@expo/vector-icons'
 export default function HowItWorksScreen() {
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const router = useRouter()
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const insets = useSafeAreaInsets()
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   const steps = [
     {
@@ -115,12 +117,12 @@ export default function HowItWorksScreen() {
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: bg },
     header: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16,
+      paddingHorizontal: 16, paddingTop: insets.top + 10, paddingBottom: 16,
       backgroundColor: surface, borderBottomWidth: 0.5, borderBottomColor: border
     },
     backBtn: { width: 40, height: 40, justifyContent: 'center' },

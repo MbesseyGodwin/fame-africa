@@ -13,11 +13,7 @@
       "distribution": "internal"
     },
     "production": {
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://fameafrica-api.onrender.com/api/v1",
-        "EXPO_PUBLIC_AGORA_APP_ID": "4e5cdfdfdf844827a80023bbc9c473bf"
-      }
+      "distribution": "internal"
     }
   },
   "submit": {

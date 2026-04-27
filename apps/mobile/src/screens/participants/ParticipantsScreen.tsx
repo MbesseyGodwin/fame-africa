@@ -4,8 +4,10 @@
 import React, { useState } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  ActivityIndicator, Image, RefreshControl, Dimensions
+  ActivityIndicator, Image, RefreshControl, Dimensions,
+  StatusBar
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { participantsApi, stansApi } from '../../utils/api'
 import { useTheme } from '../../context/ThemeContext'
@@ -28,7 +30,8 @@ export default function ParticipantsScreen() {
 
   // The API returns { data: { data: { participants: [] } } } or similar
   const participants = pRes?.data?.data?.participants ?? pRes?.data?.data ?? []
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const insets = useSafeAreaInsets()
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   // ── Mutations ───────────────────────────────────────────────
   const stanMutation = useMutation({
@@ -111,8 +114,15 @@ export default function ParticipantsScreen() {
 
   return (
     <View style={s.container}>
+      <StatusBar barStyle={theme.darkMode ? 'light-content' : 'dark-content'} />
       {/* Header / Search Area */}
       <View style={s.header}>
+        <View style={s.topRow}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="chevron-back" size={28} color={textPrimary} />
+          </TouchableOpacity>
+          <Text style={s.title}>Find Participants</Text>
+        </View>
         <View style={s.searchBarContainer}>
           <View style={s.searchBar}>
             <Ionicons name="search" size={20} color={textSecondary} />
@@ -166,9 +176,19 @@ export default function ParticipantsScreen() {
             />
           }
           ListHeaderComponent={
-            participants.length > 0 ? (
-              <Text style={s.resultsCount}>Showing {participants.length} contestants</Text>
-            ) : null
+            <View>
+              {search.length === 0 && (
+                <View style={s.instructionBox}>
+                  <Text style={s.instructionTitle}>Discover Talent</Text>
+                  <Text style={s.instructionText}>Find and support your favorite contestants. You can search by name, city, or talent category.</Text>
+                </View>
+              )}
+              {participants.length > 0 && (
+                <Text style={s.resultsCount}>
+                  {search.length > 0 ? `Found ${participants.length} matches` : `Showing ${participants.length} contestants`}
+                </Text>
+              )}
+            </View>
           }
           ListEmptyComponent={
             <View style={s.emptyState}>
@@ -190,18 +210,40 @@ export default function ParticipantsScreen() {
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: bg },
     header: {
-      paddingTop: 10,
+      paddingTop: Math.max(insets.top, 16),
+      paddingBottom: 16,
       backgroundColor: bg,
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      marginBottom: 16,
+      gap: 12,
+    },
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: -10,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: '900',
+      color: textPrimary,
+      letterSpacing: -0.5,
     },
     searchBarContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,
-      gap: 12,
+      gap: 10,
     },
     searchBar: {
       flex: 1,
@@ -239,11 +281,30 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     listPadding: { padding: 16, paddingBottom: 100 },
     resultsCount: {
       fontSize: 12,
-      fontWeight: '700',
+      fontWeight: '800',
       color: textSecondary,
       marginBottom: 16,
-      letterSpacing: 0.5,
+      letterSpacing: 1,
       textTransform: 'uppercase',
+    },
+    instructionBox: {
+      backgroundColor: theme.accentColor + '40',
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: theme.accentColor,
+    },
+    instructionTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: theme.primaryColor,
+      marginBottom: 4,
+    },
+    instructionText: {
+      fontSize: 13,
+      color: textSecondary,
+      lineHeight: 18,
     },
     card: {
       backgroundColor: surface,

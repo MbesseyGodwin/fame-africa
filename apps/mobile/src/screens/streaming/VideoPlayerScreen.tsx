@@ -33,8 +33,10 @@ export default function VideoPlayerScreen() {
         console.error('Error fetching recording link', err)
         if (err.response?.status === 202) {
           setError('Recording is still being processed. Please check back soon!')
+        } else if (err.response?.status === 404) {
+          setError('This recording is missing or failed to process correctly.')
         } else {
-          setError('Could not reach the server or recording is missing.')
+          setError('Could not reach the server. Please try again later.')
         }
       } finally {
         setLoading(false)

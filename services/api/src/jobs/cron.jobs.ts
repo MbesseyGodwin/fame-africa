@@ -8,6 +8,9 @@ import { generateDailyAdvice } from '../modules/ai-strategist/ai-strategist.serv
 import { sealDailyVotes } from '../modules/audit/audit.service'
 import { endArenaEvent } from '../modules/arena/arena.service'
 import { notificationService } from '../modules/notifications/notification.service'
+import { BattlesService } from '../modules/battles/battles.service'
+import { streamingService } from '../modules/streaming/streaming.service'
+import { PaymentsService } from '../modules/payments/payments.service'
 
 export function startCronJobs() {
   const eliminationSchedule = process.env.ELIMINATION_CRON_SCHEDULE || '59 23 * * *'
@@ -35,6 +38,31 @@ export function startCronJobs() {
     await autoCloseArenaEvents()
   })
 
+  // ── BATTLES AUTOMATION ──────────────────────────────────────
+  
+  // Resolve finished battles every hour
+  cron.schedule('0 * * * *', async () => {
+    logger.info('Running Battle resolution job...')
+    try {
+      const resolved = await BattlesService.resolveExpiredBattles()
+      if (resolved > 0) logger.info(`Resolved ${resolved} expired battles.`)
+    } catch (error) {
+      logger.error('Battle resolution failed:', error)
+    }
+  })
+
+  // Match participants for new battles every 6 hours
+  // Runs at 00:00, 06:00, 12:00, 18:00
+  cron.schedule('0 */6 * * *', async () => {
+    logger.info('Running automated Battle matchmaking...')
+    try {
+      const pairs = await BattlesService.generateAutomaticBattles()
+      if (pairs && pairs > 0) logger.info(`Matched ${pairs} new head-to-head battles.`)
+    } catch (error) {
+      logger.error('Battle matchmaking failed:', error)
+    }
+  })
+
   // ── AI & BLOCKCHAIN JOBS ────────────────────────────────────
   
   // Seal yesterday's votes at 00:05 AM daily
@@ -54,6 +82,36 @@ export function startCronJobs() {
       await generateDailyAdvice()
     } catch (error) {
       logger.error('AI Strategist job failed:', error)
+    }
+  })
+
+  // Auto-close stale streams every 30 mins
+  cron.schedule('*/30 * * * *', async () => {
+    try {
+      const closed = await streamingService.autoCloseStaleStreams()
+      if (closed > 0) logger.info(`Auto-closed ${closed} stale streams.`)
+    } catch (error) {
+      logger.error('Stale stream cleanup failed:', error)
+    }
+  })
+
+  // Cleanup/Fulfill pending Mega Votes every hour (Safety net)
+  cron.schedule('45 * * * *', async () => {
+    logger.info('Running Mega Vote fulfillment safety check...')
+    try {
+      await fulfillPendingMegaVotes()
+    } catch (error) {
+      logger.error('Mega Vote cleanup failed:', error)
+    }
+  })
+
+  // ── BROADCASTS ──────────────────────────────────────────────
+  cron.schedule('* * * * *', async () => {
+    try {
+      const { processScheduledBroadcasts } = await import('../modules/admin/admin.controller')
+      await processScheduledBroadcasts()
+    } catch (error) {
+      logger.error('Broadcast processing job failed:', error)
     }
   })
 
@@ -266,20 +324,33 @@ async function crownWinner(cycleId: string) {
 async function updateCycleStatuses() {
   const now = new Date()
 
+  // 1. Open Registration
   await prisma.competitionCycle.updateMany({
     where: { status: 'DRAFT', registrationOpen: { lte: now } },
     data: { status: 'REGISTRATION_OPEN' },
   })
 
+  // 2. Close Registration
   await prisma.competitionCycle.updateMany({
     where: { status: 'REGISTRATION_OPEN', registrationClose: { lte: now } },
     data: { status: 'REGISTRATION_CLOSED' },
   })
 
+  // 3. Open Voting
   await prisma.competitionCycle.updateMany({
     where: { status: 'REGISTRATION_CLOSED', votingOpen: { lte: now } },
     data: { status: 'VOTING_OPEN' },
   })
+
+  // 4. Close Voting & Crown Winner AUTOMATICALLY
+  const expiringCycles = await prisma.competitionCycle.findMany({
+    where: { status: 'VOTING_OPEN', votingClose: { lte: now } }
+  })
+
+  for (const cycle of expiringCycles) {
+    logger.info(`Automated closing for cycle: ${cycle.cycleName}`)
+    await crownWinner(cycle.id)
+  }
 }
 
 async function autoCloseArenaEvents() {
@@ -295,6 +366,17 @@ async function autoCloseArenaEvents() {
       logger.info(`Auto-closing stale Arena event: ${event.id}`)
       await endArenaEvent(event.id)
     }
+  }
+}
+
+async function fulfillPendingMegaVotes() {
+  const unfulfilled = await prisma.transaction.findMany({
+    where: { status: 'SUCCESS', isFulfilled: false }
+  })
+
+  for (const tx of unfulfilled) {
+    logger.info(`Fulfilling missed transaction: ${tx.reference}`)
+    await PaymentsService.handleSuccessfulPayment(tx.reference, Number(tx.amount))
   }
 }
 

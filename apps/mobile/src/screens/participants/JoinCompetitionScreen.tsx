@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../context/AuthContext'
 import { AFRICA_LOCATIONS } from '../../utils/locationData'
+import { BlurView } from 'expo-blur'
 
 const { width, height } = Dimensions.get('window')
 
@@ -383,470 +384,492 @@ export default function JoinCompetitionScreen() {
 
   // ── Main form ─────────────────────────────────────────────
   return (
-    <KeyboardAvoidingView
-      style={s.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
-      {/* ── Sticky header (minimal height) ── */}
-      <View style={[s.header, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity
-          onPress={() => step > 0 ? setStep(s => s - 1) : router.back()}
-          style={s.backBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="arrow-back" size={22} color={textPrimary} />
-        </TouchableOpacity>
+    <>
+      <KeyboardAvoidingView
+        style={s.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        {/* ── Sticky header (minimal height) ── */}
+        <View style={[s.header, { paddingTop: insets.top + 6 }]}>
+          <TouchableOpacity
+            onPress={() => step > 0 ? setStep(s => s - 1) : router.back()}
+            style={s.backBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="arrow-back" size={22} color={textPrimary} />
+          </TouchableOpacity>
 
-        <Text style={[s.headerTitle, { color: textPrimary }]}>FameAfrica Entry</Text>
+          <Text style={[s.headerTitle, { color: textPrimary }]}>FameAfrica Entry</Text>
 
-        <View style={[s.stepPill, { backgroundColor: theme.primaryColor + '15' }]}>
-          <Text style={[s.stepPillText, { color: theme.primaryColor }]}>{step}/4</Text>
+          <View style={[s.stepPill, { backgroundColor: theme.primaryColor + '15' }]}>
+            <Text style={[s.stepPillText, { color: theme.primaryColor }]}>{step}/4</Text>
+          </View>
         </View>
-      </View>
 
-      {/* ── Progress bar ── */}
-      <View style={s.progressOuter}>
-        <View style={[s.progressTrack, { backgroundColor: border }]}>
-          <View style={[s.progressFill, { width: `${progressPct}%`, backgroundColor: theme.primaryColor }]} />
-        </View>
-        <View style={s.dotsRow}>
-          {STEPS.map((st, i) => (
-            <View key={i} style={s.dotGroup}>
-              <View style={[s.dot, {
-                backgroundColor: i <= step ? theme.primaryColor : border,
-              }]}>
-                {i < step
-                  ? <Ionicons name="checkmark" size={9} color="#fff" />
-                  : <View style={[s.dotCore, { backgroundColor: i === step ? '#fff' : 'transparent' }]} />
-                }
+        {/* ── Progress bar ── */}
+        <View style={s.progressOuter}>
+          <View style={[s.progressTrack, { backgroundColor: border }]}>
+            <View style={[s.progressFill, { width: `${progressPct}%`, backgroundColor: theme.primaryColor }]} />
+          </View>
+          <View style={s.dotsRow}>
+            {STEPS.map((st, i) => (
+              <View key={i} style={s.dotGroup}>
+                <View style={[s.dot, {
+                  backgroundColor: i <= step ? theme.primaryColor : border,
+                }]}>
+                  {i < step
+                    ? <Ionicons name="checkmark" size={9} color="#fff" />
+                    : <View style={[s.dotCore, { backgroundColor: i === step ? '#fff' : 'transparent' }]} />
+                  }
+                </View>
+                <Text style={[s.dotLabel, { color: i <= step ? theme.primaryColor : textSecondary }]}>
+                  {st.label}
+                </Text>
               </View>
-              <Text style={[s.dotLabel, { color: i <= step ? theme.primaryColor : textSecondary }]}>
-                {st.label}
-              </Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
 
-      {/* ── Step heading row ── */}
-      <View style={s.stepHead}>
-        <View style={[s.stepIconCircle, { backgroundColor: theme.primaryColor + '12' }]}>
-          <Ionicons name={STEPS[step].icon as any} size={20} color={theme.primaryColor} />
+        {/* ── Step heading row ── */}
+        <View style={s.stepHead}>
+          <View style={[s.stepIconCircle, { backgroundColor: theme.primaryColor + '12' }]}>
+            <Ionicons name={STEPS[step].icon as any} size={20} color={theme.primaryColor} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.stepTitle, { color: textPrimary }]}>
+              {['The Fairness Charter', 'Forge Your Identity', 'Expose Your Look', 'Unleash Your Talent', 'Launch Your Journey'][step]}
+            </Text>
+            <Text style={[s.stepSub, { color: textSecondary }]}>
+              {[
+                'Formal commitment to clean, competitive play',
+                'Define how fans across Africa will discover you',
+                'Your portrait is your banner — make it legendary',
+                'A 60-second window to convince the continent',
+                'Finalize your presence and enter the arena',
+              ][step]}
+            </Text>
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.stepTitle, { color: textPrimary }]}>
-            {['The Fairness Charter', 'Forge Your Identity', 'Expose Your Look', 'Unleash Your Talent', 'Launch Your Journey'][step]}
-          </Text>
-          <Text style={[s.stepSub, { color: textSecondary }]}>
-            {[
-              'Formal commitment to clean, competitive play',
-              'Define how fans across Africa will discover you',
-              'Your portrait is your banner — make it legendary',
-              'A 60-second window to convince the continent',
-              'Finalize your presence and enter the arena',
-            ][step]}
-          </Text>
-        </View>
-      </View>
 
-      {/* ════════════════════════════════════════════════════
+        {/* ════════════════════════════════════════════════════
           SCROLL AREA — button lives INSIDE here, at the bottom
           so it scrolls with content and is never obscured
       ════════════════════════════════════════════════════ */}
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
 
-        {/* ─── STEP 0 · Transparency Oath ─────────────────── */}
-        {step === 0 && (
-          <View style={[s.oathCard, { backgroundColor: surface, borderColor: theme.primaryColor + '50' }]}>
-            <View style={s.oathHeadRow}>
-              <View style={[s.oathIconBox, { backgroundColor: theme.primaryColor + '12' }]}>
-                <Ionicons name="document-text" size={26} color={theme.primaryColor} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.oathCardTitle, { color: textPrimary }]}>The Contestant Declaration</Text>
-                <Text style={[s.oathCardSub, { color: textSecondary }]}>Pan-African Legal & Fairness Standard</Text>
-              </View>
-            </View>
-
-            <Text style={[s.oathIntro, { color: textSecondary }]}>
-              FameAfrica is built on meritocracy. By entering, you formally agree to our standards of transparency:
-            </Text>
-
-            <View style={[s.oathDivider, { backgroundColor: border }]} />
-
-            {[
-              { title: 'The Hustle Mandate', text: 'Success is earned, not bought. The fee gives you a platform; your hustle gets the votes.' },
-              { title: 'The No-Refund Clause', text: 'Fees are non-refundable — they immediately fuel the prize pool and national infrastructure.' },
-              { title: 'The Authenticity Promise', text: 'This is a talent popularity contest, not a financial scheme. No ROI is guaranteed.' },
-              { title: 'The Integrity Audit', text: 'We monitor voting patterns in real-time. Bot usage or fraud means immediate expulsion.' },
-            ].map((item, i) => (
-              <View key={i} style={s.oathItem}>
-                <View style={[s.oathNum, { backgroundColor: theme.primaryColor + '12' }]}>
-                  <Text style={[s.oathNumText, { color: theme.primaryColor }]}>{i + 1}</Text>
+          {/* ─── STEP 0 · Transparency Oath ─────────────────── */}
+          {step === 0 && (
+            <View style={[s.oathCard, { backgroundColor: surface, borderColor: theme.primaryColor + '50' }]}>
+              <View style={s.oathHeadRow}>
+                <View style={[s.oathIconBox, { backgroundColor: theme.primaryColor + '12' }]}>
+                  <Ionicons name="document-text" size={26} color={theme.primaryColor} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.oathItemTitle, { color: textPrimary }]}>{item.title}</Text>
-                  <Text style={[s.oathItemText, { color: textSecondary }]}>{item.text}</Text>
+                  <Text style={[s.oathCardTitle, { color: textPrimary }]}>The Contestant Declaration</Text>
+                  <Text style={[s.oathCardSub, { color: textSecondary }]}>Pan-African Legal & Fairness Standard</Text>
                 </View>
               </View>
-            ))}
 
-            <View style={[s.signZone, { backgroundColor: bg, borderColor: border }]}>
-              <Ionicons name="finger-print" size={22} color={theme.primaryColor} />
-              <Text style={[s.signZoneText, { color: textSecondary }]}>
-                Tapping <Text style={{ fontStyle: 'normal', fontWeight: '800', color: textPrimary }}>"Enter the Arena"</Text> below constitutes your digital signature on this charter.
+              <Text style={[s.oathIntro, { color: textSecondary }]}>
+                FameAfrica is built on meritocracy. By entering, you formally agree to our standards of transparency:
               </Text>
-            </View>
-          </View>
-        )}
 
-        {/* ─── STEP 1 · Identity ──────────────────────────── */}
-        {step === 1 && (
-          <View>
-            {/* Stage name */}
-            <Text style={[s.label, { color: textPrimary }]}>Stage Name <Text style={s.req}>*</Text></Text>
-            <Text style={[s.hint, { color: textSecondary }]}>
-              Your official brand name — use the name your fans already know you by.
-            </Text>
-            <View style={[s.inputRow, { backgroundColor: bg, borderColor: border }]}>
-              <Ionicons name="person-outline" size={18} color={theme.primaryColor} style={s.inputIcon} />
-              <TextInput
-                style={[s.input, { color: textPrimary }]}
-                placeholder="e.g. StarBoy Wiz / Mercy Stylez"
-                placeholderTextColor={textSecondary}
-                value={form.displayName}
-                onChangeText={t => setForm(f => ({ ...f, displayName: t }))}
-                returnKeyType="next"
-              />
-            </View>
-
-            {/* Category */}
-            <Text style={[s.label, { color: textPrimary }]}>Category <Text style={s.req}>*</Text></Text>
-            <Text style={[s.hint, { color: textSecondary }]}>
-              Choose the arena where you'll compete. This determines your leaderboard.
-            </Text>
-            <View style={s.catGrid}>
-              {CATEGORIES.map(cat => {
-                const sel = form.category === cat.name
-                return (
-                  <TouchableOpacity
-                    key={cat.name}
-                    style={[s.catCard, {
-                      backgroundColor: sel ? theme.primaryColor : surface,
-                      borderColor: sel ? theme.primaryColor : border,
-                    }]}
-                    onPress={() => setForm(f => ({ ...f, category: cat.name }))}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name={cat.icon as any} size={22} color={sel ? '#fff' : theme.primaryColor} />
-                    <Text style={[s.catText, { color: sel ? '#fff' : textPrimary }]}>{cat.name}</Text>
-                    {sel && (
-                      <View style={s.catCheck}>
-                        <Ionicons name="checkmark" size={10} color={theme.primaryColor} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-
-            {/* Bio */}
-            <View style={s.bioHeadRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.label, { color: textPrimary, marginTop: 0 }]}>Biography <Text style={s.req}>*</Text></Text>
-                <Text style={[s.hint, { color: textSecondary, marginBottom: 0 }]}>
-                  Your pitch to voters — tell your story and why you deserve to win.
-                </Text>
-              </View>
-              <Text style={[s.bioCounter, { color: form.bio.length < 50 ? '#EF4444' : '#10B981' }]}>
-                {form.bio.length}/500
-              </Text>
-            </View>
-            <View style={[s.inputRow, s.inputMulti, { backgroundColor: bg, borderColor: border }]}>
-              <TextInput
-                style={[s.input, s.inputTextArea, { color: textPrimary }]}
-                placeholder="Share your journey and why you deserve to win. (Min 50 characters)"
-                placeholderTextColor={textSecondary}
-                value={form.bio}
-                onChangeText={t => setForm(f => ({ ...f, bio: t.slice(0, 500) }))}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            {/* Nationality */}
-            <Text style={[s.label, { color: textPrimary }]}>Nationality <Text style={s.req}>*</Text></Text>
-            <Text style={[s.hint, { color: textSecondary }]}>Your home country — unlocks the state/city selectors below.</Text>
-            <TouchableOpacity
-              style={[s.inputRow, { backgroundColor: bg, borderColor: border }]}
-              onPress={() => openSelector('nationality')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="globe-outline" size={18} color={theme.primaryColor} style={s.inputIcon} />
-              <Text style={[s.inputVal, { color: form.nationality ? textPrimary : textSecondary, flex: 1 }]}>
-                {form.nationality || 'Select nationality'}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color={textSecondary} />
-            </TouchableOpacity>
-
-            {/* State + City row */}
-            <Text style={[s.label, { color: textPrimary }]}>State & City <Text style={s.req}>*</Text></Text>
-            <Text style={[s.hint, { color: textSecondary }]}>Helps local fans find and vote for their hometown hero.</Text>
-            <View style={s.twoCol}>
-              <TouchableOpacity
-                style={[s.inputRow, { flex: 1, backgroundColor: bg, borderColor: border, opacity: form.nationality ? 1 : 0.45 }]}
-                onPress={() => form.nationality && openSelector('state')}
-                disabled={!form.nationality}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="map-outline" size={16} color={theme.primaryColor} style={s.inputIcon} />
-                <Text style={[s.inputVal, { color: form.state ? textPrimary : textSecondary, flex: 1 }]}>
-                  {form.state || 'State'}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={textSecondary} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[s.inputRow, { flex: 1, backgroundColor: bg, borderColor: border, opacity: form.state ? 1 : 0.45 }]}
-                onPress={() => form.state && openSelector('city')}
-                disabled={!form.state}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="business-outline" size={16} color={theme.primaryColor} style={s.inputIcon} />
-                <Text style={[s.inputVal, { color: form.city ? textPrimary : textSecondary, flex: 1 }]}>
-                  {form.city || 'City'}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {LocationModal}
-          </View>
-        )}
-
-        {/* ─── STEP 2 · Portrait photo ─────────────────────── */}
-        {step === 2 && (
-          <View>
-            <View style={s.guideRow}>
-              <View style={[s.guideBox, { backgroundColor: '#ECFDF5', borderColor: '#10B98125' }]}>
-                <Text style={s.guideBoxHead}>✅ Do This</Text>
-                <Text style={s.guideBoxLine}>Clear natural lighting</Text>
-                <Text style={s.guideBoxLine}>Eye contact with camera</Text>
-                <Text style={s.guideBoxLine}>High-res solo shot</Text>
-              </View>
-              <View style={[s.guideBox, { backgroundColor: '#FEF2F2', borderColor: '#EF444420' }]}>
-                <Text style={s.guideBoxHead}>❌ Avoid This</Text>
-                <Text style={s.guideBoxLine}>Dark or blurry images</Text>
-                <Text style={s.guideBoxLine}>Heavy filters or masks</Text>
-                <Text style={s.guideBoxLine}>Group photos or cartoons</Text>
-              </View>
-            </View>
-
-            <Text style={[s.uploadHint, { color: textPrimary }]}>
-              Tap the circle to select your photo <Text style={s.req}>*</Text>
-            </Text>
-
-            <TouchableOpacity
-              style={[s.photoCircle, { borderColor: image ? theme.primaryColor : border, backgroundColor: bg }]}
-              onPress={pickImage}
-              activeOpacity={0.8}
-            >
-              {image ? (
-                <Image source={{ uri: image }} style={s.photoImg} />
-              ) : (
-                <View style={s.uploadCenter}>
-                  <View style={[s.uploadIconRing, { backgroundColor: theme.primaryColor + '12' }]}>
-                    <Ionicons name="camera" size={28} color={theme.primaryColor} />
-                  </View>
-                  <Text style={[s.uploadCta, { color: textPrimary }]}>Select Photo</Text>
-                  <Text style={[s.uploadSub, { color: textSecondary }]}>Tap to open gallery</Text>
-                </View>
-              )}
-              {image && (
-                <View style={[s.editBadge, { backgroundColor: theme.primaryColor, borderColor: surface }]}>
-                  <Ionicons name="pencil" size={14} color="#fff" />
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {image && (
-              <View style={[s.successBar, { backgroundColor: '#ECFDF5', borderColor: '#10B98130' }]}>
-                <Ionicons name="checkmark-circle" size={15} color="#10B981" />
-                <Text style={s.successBarText}>Photo ready. Tap the circle to change it.</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ─── STEP 3 · Talent video ───────────────────────── */}
-        {step === 3 && (
-          <View>
-            <View style={s.guideRow}>
-              <View style={[s.guideBox, { backgroundColor: '#EFF6FF', borderColor: '#3B82F620' }]}>
-                <Text style={s.guideBoxHead}>🎭 Talent Tips</Text>
-                <Text style={s.guideBoxLine}>30–60 seconds sweet spot</Text>
-                <Text style={s.guideBoxLine}>Confident intro + performance</Text>
-                <Text style={s.guideBoxLine}>Quiet setting, clear audio</Text>
-              </View>
-              <View style={[s.guideBox, { backgroundColor: '#F5F3FF', borderColor: '#8B5CF620' }]}>
-                <Text style={s.guideBoxHead}>⚠️ Tech Check</Text>
-                <Text style={s.guideBoxLine}>Steady camera, no shaking</Text>
-                <Text style={s.guideBoxLine}>Max 50 MB file size</Text>
-                <Text style={s.guideBoxLine}>MP4 format recommended</Text>
-              </View>
-            </View>
-
-            <Text style={[s.uploadHint, { color: textPrimary }]}>
-              Tap below to select your video <Text style={s.req}>*</Text>
-            </Text>
-
-            <TouchableOpacity
-              style={[s.videoBox, { borderColor: video ? theme.primaryColor : border, backgroundColor: bg }]}
-              onPress={pickVideo}
-              activeOpacity={0.8}
-            >
-              {video ? (
-                <View style={s.uploadCenter}>
-                  <View style={[s.videoSuccessRing, { borderColor: '#10B981' }]}>
-                    <Ionicons name="checkmark-circle" size={46} color="#10B981" />
-                  </View>
-                  <Text style={[s.uploadCta, { color: textPrimary, marginTop: 10 }]}>Video Attached & Ready</Text>
-                  <Text style={[s.uploadSub, { color: theme.primaryColor }]}>Tap to swap it out</Text>
-                </View>
-              ) : (
-                <View style={s.uploadCenter}>
-                  <View style={[s.uploadIconRing, { backgroundColor: theme.primaryColor + '12' }]}>
-                    <Ionicons name="film" size={28} color={theme.primaryColor} />
-                  </View>
-                  <Text style={[s.uploadCta, { color: textPrimary }]}>Select Video from Gallery</Text>
-                  <Text style={[s.uploadSub, { color: textSecondary }]}>Max 50 MB · MP4 recommended</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {video && (
-              <View style={[s.successBar, { backgroundColor: '#ECFDF5', borderColor: '#10B98130' }]}>
-                <Ionicons name="checkmark-circle" size={15} color="#10B981" />
-                <Text style={s.successBarText}>Video ready. Will upload after payment is confirmed.</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ─── STEP 4 · Socials + fee ──────────────────────── */}
-        {step === 4 && (
-          <View>
-            <View style={[s.infoTip, { backgroundColor: theme.primaryColor + '08', borderColor: theme.primaryColor + '20' }]}>
-              <Ionicons name="share-social-outline" size={16} color={theme.primaryColor} />
-              <Text style={[s.infoTipText, { color: textPrimary }]}>
-                <Text style={{ fontWeight: '700' }}>Socials are optional</Text> but contestants who link accounts get significantly more votes — fans can verify you're real.
-              </Text>
-            </View>
-
-            {[
-              { key: 'instagramUrl', icon: 'logo-instagram', color: '#E1306C', label: 'Instagram', placeholder: 'yourhandle', prefix: '@' },
-              { key: 'twitterUrl', icon: 'logo-twitter', color: '#1DA1F2', label: 'Twitter / X', placeholder: 'yourhandle', prefix: '@' },
-              { key: 'tiktokUrl', icon: 'logo-tiktok', color: '#010101', label: 'TikTok', placeholder: 'yourhandle', prefix: '@' },
-              { key: 'youtubeUrl', icon: 'logo-youtube', color: '#FF0000', label: 'YouTube URL', placeholder: 'https://youtube.com/c/…', prefix: null },
-            ].map(social => (
-              <View key={social.key} style={s.socialBlock}>
-                <Text style={[s.label, { color: textPrimary }]}>{social.label}</Text>
-                <View style={[s.socialRow, { backgroundColor: bg, borderColor: border }]}>
-                  <View style={[s.socialIconBlock, { borderRightColor: border }]}>
-                    <Ionicons name={social.icon as any} size={20} color={social.color} />
-                  </View>
-                  {social.prefix && (
-                    <Text style={[s.socialAt, { color: textSecondary }]}>{social.prefix}</Text>
-                  )}
-                  <TextInput
-                    style={[s.socialInput, { color: textPrimary }]}
-                    value={(form as any)[social.key]}
-                    onChangeText={v => setForm(f => ({ ...f, [social.key]: v }))}
-                    placeholder={social.placeholder}
-                    placeholderTextColor={textSecondary}
-                    autoCapitalize="none"
-                    returnKeyType="next"
-                  />
-                </View>
-              </View>
-            ))}
-
-            {/* Fee breakdown */}
-            <View style={[s.feeCard, { backgroundColor: surface, borderColor: border, borderTopColor: theme.primaryColor }]}>
-              <View style={s.feeTopRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.feeTitle, { color: theme.primaryColor }]}>Entry Fee: {feeFormatted}</Text>
-                  <Text style={[s.feeSub, { color: textSecondary }]}>Full transparency on how your fee is used</Text>
-                </View>
-                <View style={s.pubBadge}>
-                  <Text style={s.pubBadgeText}>PUBLIC</Text>
-                </View>
-              </View>
-
-              <View style={[s.feeDivider, { backgroundColor: border }]} />
+              <View style={[s.oathDivider, { backgroundColor: border }]} />
 
               {[
-                { icon: 'trophy-outline', color: '#10B981', label: 'Prize Pool (50%) — paid out to winners', value: `${feeCur}${prizePool.toLocaleString()}` },
-                { icon: 'megaphone-outline', color: '#3B82F6', label: 'Marketing & Promotion (30%)', value: `${feeCur}${marketing.toLocaleString()}` },
-                { icon: 'server-outline', color: '#8B5CF6', label: 'Platform Fee (20%) — servers & processing', value: `${feeCur}${platformFee.toLocaleString()}` },
-              ].map((row, i) => (
-                <View key={i} style={s.feeRow}>
-                  <Ionicons name={row.icon as any} size={13} color={row.color} />
-                  <Text style={[s.feeLabel, { color: textSecondary }]}>{row.label}</Text>
-                  <Text style={[s.feeVal, { color: textPrimary }]}>{row.value}</Text>
+                { title: 'The Hustle Mandate', text: 'Success is earned, not bought. The fee gives you a platform; your hustle gets the votes.' },
+                { title: 'The No-Refund Clause', text: 'Fees are non-refundable — they immediately fuel the prize pool and national infrastructure.' },
+                { title: 'The Authenticity Promise', text: 'This is a talent popularity contest, not a financial scheme. No ROI is guaranteed.' },
+                { title: 'The Integrity Audit', text: 'We monitor voting patterns in real-time. Bot usage or fraud means immediate expulsion.' },
+              ].map((item, i) => (
+                <View key={i} style={s.oathItem}>
+                  <View style={[s.oathNum, { backgroundColor: theme.primaryColor + '12' }]}>
+                    <Text style={[s.oathNumText, { color: theme.primaryColor }]}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.oathItemTitle, { color: textPrimary }]}>{item.title}</Text>
+                    <Text style={[s.oathItemText, { color: textSecondary }]}>{item.text}</Text>
+                  </View>
                 </View>
               ))}
 
-              <View style={[s.feeDivider, { backgroundColor: border }]} />
-
-              <View style={[s.payNotice, { backgroundColor: '#ECFDF5', borderColor: '#10B98120' }]}>
-                <Ionicons name="shield-checkmark-outline" size={16} color="#10B981" />
-                <Text style={s.payNoticeText}>
-                  Secured by <Text style={{ fontWeight: '700' }}>Flutterwave</Text>. FameAfrica never stores your card details. You'll be redirected to a secure checkout page.
+              <View style={[s.signZone, { backgroundColor: bg, borderColor: border }]}>
+                <Ionicons name="finger-print" size={22} color={theme.primaryColor} />
+                <Text style={[s.signZoneText, { color: textSecondary }]}>
+                  Tapping <Text style={{ fontStyle: 'normal', fontWeight: '800', color: textPrimary }}>"Enter the Arena"</Text> below constitutes your digital signature on this charter.
                 </Text>
               </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* ════════════════════════════════════════════════════
+          {/* ─── STEP 1 · Identity ──────────────────────────── */}
+          {step === 1 && (
+            <View>
+              {/* Stage name */}
+              <Text style={[s.label, { color: textPrimary }]}>Stage Name <Text style={s.req}>*</Text></Text>
+              <Text style={[s.hint, { color: textSecondary }]}>
+                Your official brand name — use the name your fans already know you by.
+              </Text>
+              <View style={[s.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                <Ionicons name="person-outline" size={18} color={theme.primaryColor} style={s.inputIcon} />
+                <TextInput
+                  style={[s.input, { color: textPrimary }]}
+                  placeholder="e.g. StarBoy Wiz / Mercy Stylez"
+                  placeholderTextColor={textSecondary}
+                  value={form.displayName}
+                  onChangeText={t => setForm(f => ({ ...f, displayName: t }))}
+                  returnKeyType="next"
+                />
+              </View>
+
+              {/* Category */}
+              <Text style={[s.label, { color: textPrimary }]}>Category <Text style={s.req}>*</Text></Text>
+              <Text style={[s.hint, { color: textSecondary }]}>
+                Choose the arena where you'll compete. This determines your leaderboard.
+              </Text>
+              <View style={s.catGrid}>
+                {CATEGORIES.map(cat => {
+                  const sel = form.category === cat.name
+                  return (
+                    <TouchableOpacity
+                      key={cat.name}
+                      style={[s.catCard, {
+                        backgroundColor: sel ? theme.primaryColor : surface,
+                        borderColor: sel ? theme.primaryColor : border,
+                      }]}
+                      onPress={() => setForm(f => ({ ...f, category: cat.name }))}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name={cat.icon as any} size={22} color={sel ? '#fff' : theme.primaryColor} />
+                      <Text style={[s.catText, { color: sel ? '#fff' : textPrimary }]}>{cat.name}</Text>
+                      {sel && (
+                        <View style={s.catCheck}>
+                          <Ionicons name="checkmark" size={10} color={theme.primaryColor} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+
+              {/* Bio */}
+              <View style={s.bioHeadRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.label, { color: textPrimary, marginTop: 0 }]}>Biography <Text style={s.req}>*</Text></Text>
+                  <Text style={[s.hint, { color: textSecondary, marginBottom: 0 }]}>
+                    Your pitch to voters — tell your story and why you deserve to win.
+                  </Text>
+                </View>
+                <Text style={[s.bioCounter, { color: form.bio.length < 50 ? '#EF4444' : '#10B981' }]}>
+                  {form.bio.length}/500
+                </Text>
+              </View>
+              <View style={[s.inputRow, s.inputMulti, { backgroundColor: bg, borderColor: border }]}>
+                <TextInput
+                  style={[s.input, s.inputTextArea, { color: textPrimary }]}
+                  placeholder="Share your journey and why you deserve to win. (Min 50 characters)"
+                  placeholderTextColor={textSecondary}
+                  value={form.bio}
+                  onChangeText={t => setForm(f => ({ ...f, bio: t.slice(0, 500) }))}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {/* Nationality */}
+              <Text style={[s.label, { color: textPrimary }]}>Nationality <Text style={s.req}>*</Text></Text>
+              <Text style={[s.hint, { color: textSecondary }]}>Your home country — unlocks the state/city selectors below.</Text>
+              <TouchableOpacity
+                style={[s.inputRow, { backgroundColor: bg, borderColor: border }]}
+                onPress={() => openSelector('nationality')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="globe-outline" size={18} color={theme.primaryColor} style={s.inputIcon} />
+                <Text style={[s.inputVal, { color: form.nationality ? textPrimary : textSecondary, flex: 1 }]}>
+                  {form.nationality || 'Select nationality'}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color={textSecondary} />
+              </TouchableOpacity>
+
+              {/* State + City row */}
+              <Text style={[s.label, { color: textPrimary }]}>State & City <Text style={s.req}>*</Text></Text>
+              <Text style={[s.hint, { color: textSecondary }]}>Helps local fans find and vote for their hometown hero.</Text>
+              <View style={s.twoCol}>
+                <TouchableOpacity
+                  style={[s.inputRow, { flex: 1, backgroundColor: bg, borderColor: border, opacity: form.nationality ? 1 : 0.45 }]}
+                  onPress={() => form.nationality && openSelector('state')}
+                  disabled={!form.nationality}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="map-outline" size={16} color={theme.primaryColor} style={s.inputIcon} />
+                  <Text style={[s.inputVal, { color: form.state ? textPrimary : textSecondary, flex: 1 }]}>
+                    {form.state || 'State'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color={textSecondary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[s.inputRow, { flex: 1, backgroundColor: bg, borderColor: border, opacity: form.state ? 1 : 0.45 }]}
+                  onPress={() => form.state && openSelector('city')}
+                  disabled={!form.state}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="business-outline" size={16} color={theme.primaryColor} style={s.inputIcon} />
+                  <Text style={[s.inputVal, { color: form.city ? textPrimary : textSecondary, flex: 1 }]}>
+                    {form.city || 'City'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color={textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {LocationModal}
+            </View>
+          )}
+
+          {/* ─── STEP 2 · Portrait photo ─────────────────────── */}
+          {step === 2 && (
+            <View>
+              <View style={s.guideRow}>
+                <View style={[s.guideBox, { backgroundColor: '#ECFDF5', borderColor: '#10B98125' }]}>
+                  <Text style={s.guideBoxHead}>✅ Do This</Text>
+                  <Text style={s.guideBoxLine}>Clear natural lighting</Text>
+                  <Text style={s.guideBoxLine}>Eye contact with camera</Text>
+                  <Text style={s.guideBoxLine}>High-res solo shot</Text>
+                </View>
+                <View style={[s.guideBox, { backgroundColor: '#FEF2F2', borderColor: '#EF444420' }]}>
+                  <Text style={s.guideBoxHead}>❌ Avoid This</Text>
+                  <Text style={s.guideBoxLine}>Dark or blurry images</Text>
+                  <Text style={s.guideBoxLine}>Heavy filters or masks</Text>
+                  <Text style={s.guideBoxLine}>Group photos or cartoons</Text>
+                </View>
+              </View>
+
+              <Text style={[s.uploadHint, { color: textPrimary }]}>
+                Tap the circle to select your photo <Text style={s.req}>*</Text>
+              </Text>
+
+              <TouchableOpacity
+                style={[s.photoCircle, { borderColor: image ? theme.primaryColor : border, backgroundColor: bg }]}
+                onPress={pickImage}
+                activeOpacity={0.8}
+              >
+                {image ? (
+                  <Image source={{ uri: image }} style={s.photoImg} />
+                ) : (
+                  <View style={s.uploadCenter}>
+                    <View style={[s.uploadIconRing, { backgroundColor: theme.primaryColor + '12' }]}>
+                      <Ionicons name="camera" size={28} color={theme.primaryColor} />
+                    </View>
+                    <Text style={[s.uploadCta, { color: textPrimary }]}>Select Photo</Text>
+                    <Text style={[s.uploadSub, { color: textSecondary }]}>Tap to open gallery</Text>
+                  </View>
+                )}
+                {image && (
+                  <View style={[s.editBadge, { backgroundColor: theme.primaryColor, borderColor: surface }]}>
+                    <Ionicons name="pencil" size={14} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {image && (
+                <View style={[s.successBar, { backgroundColor: '#ECFDF5', borderColor: '#10B98130' }]}>
+                  <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                  <Text style={s.successBarText}>Photo ready. Tap the circle to change it.</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ─── STEP 3 · Talent video ───────────────────────── */}
+          {step === 3 && (
+            <View>
+              <View style={s.guideRow}>
+                <View style={[s.guideBox, { backgroundColor: '#EFF6FF', borderColor: '#3B82F620' }]}>
+                  <Text style={s.guideBoxHead}>🎭 Talent Tips</Text>
+                  <Text style={s.guideBoxLine}>30–60 seconds sweet spot</Text>
+                  <Text style={s.guideBoxLine}>Confident intro + performance</Text>
+                  <Text style={s.guideBoxLine}>Quiet setting, clear audio</Text>
+                </View>
+                <View style={[s.guideBox, { backgroundColor: '#F5F3FF', borderColor: '#8B5CF620' }]}>
+                  <Text style={s.guideBoxHead}>⚠️ Tech Check</Text>
+                  <Text style={s.guideBoxLine}>Steady camera, no shaking</Text>
+                  <Text style={s.guideBoxLine}>Max 50 MB file size</Text>
+                  <Text style={s.guideBoxLine}>MP4 format recommended</Text>
+                </View>
+              </View>
+
+              <Text style={[s.uploadHint, { color: textPrimary }]}>
+                Tap below to select your video <Text style={s.req}>*</Text>
+              </Text>
+
+              <TouchableOpacity
+                style={[s.videoBox, { borderColor: video ? theme.primaryColor : border, backgroundColor: bg }]}
+                onPress={pickVideo}
+                activeOpacity={0.8}
+              >
+                {video ? (
+                  <View style={s.uploadCenter}>
+                    <View style={[s.videoSuccessRing, { borderColor: '#10B981' }]}>
+                      <Ionicons name="checkmark-circle" size={46} color="#10B981" />
+                    </View>
+                    <Text style={[s.uploadCta, { color: textPrimary, marginTop: 10 }]}>Video Attached & Ready</Text>
+                    <Text style={[s.uploadSub, { color: theme.primaryColor }]}>Tap to swap it out</Text>
+                  </View>
+                ) : (
+                  <View style={s.uploadCenter}>
+                    <View style={[s.uploadIconRing, { backgroundColor: theme.primaryColor + '12' }]}>
+                      <Ionicons name="film" size={28} color={theme.primaryColor} />
+                    </View>
+                    <Text style={[s.uploadCta, { color: textPrimary }]}>Select Video from Gallery</Text>
+                    <Text style={[s.uploadSub, { color: textSecondary }]}>Max 50 MB · MP4 recommended</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {video && (
+                <View style={[s.successBar, { backgroundColor: '#ECFDF5', borderColor: '#10B98130' }]}>
+                  <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                  <Text style={s.successBarText}>Video ready. Will upload after payment is confirmed.</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ─── STEP 4 · Socials + fee ──────────────────────── */}
+          {step === 4 && (
+            <View>
+              <View style={[s.infoTip, { backgroundColor: theme.primaryColor + '08', borderColor: theme.primaryColor + '20' }]}>
+                <Ionicons name="share-social-outline" size={16} color={theme.primaryColor} />
+                <Text style={[s.infoTipText, { color: textPrimary }]}>
+                  <Text style={{ fontWeight: '700' }}>Socials are optional</Text> but contestants who link accounts get significantly more votes — fans can verify you're real.
+                </Text>
+              </View>
+
+              {[
+                { key: 'instagramUrl', icon: 'logo-instagram', color: '#E1306C', label: 'Instagram', placeholder: 'yourhandle', prefix: '@' },
+                { key: 'twitterUrl', icon: 'logo-twitter', color: '#1DA1F2', label: 'Twitter / X', placeholder: 'yourhandle', prefix: '@' },
+                { key: 'tiktokUrl', icon: 'logo-tiktok', color: '#010101', label: 'TikTok', placeholder: 'yourhandle', prefix: '@' },
+                { key: 'youtubeUrl', icon: 'logo-youtube', color: '#FF0000', label: 'YouTube URL', placeholder: 'https://youtube.com/c/…', prefix: null },
+              ].map(social => (
+                <View key={social.key} style={s.socialBlock}>
+                  <Text style={[s.label, { color: textPrimary }]}>{social.label}</Text>
+                  <View style={[s.socialRow, { backgroundColor: bg, borderColor: border }]}>
+                    <View style={[s.socialIconBlock, { borderRightColor: border }]}>
+                      <Ionicons name={social.icon as any} size={20} color={social.color} />
+                    </View>
+                    {social.prefix && (
+                      <Text style={[s.socialAt, { color: textSecondary }]}>{social.prefix}</Text>
+                    )}
+                    <TextInput
+                      style={[s.socialInput, { color: textPrimary }]}
+                      value={(form as any)[social.key]}
+                      onChangeText={v => setForm(f => ({ ...f, [social.key]: v }))}
+                      placeholder={social.placeholder}
+                      placeholderTextColor={textSecondary}
+                      autoCapitalize="none"
+                      returnKeyType="next"
+                    />
+                  </View>
+                </View>
+              ))}
+
+              {/* Fee breakdown */}
+              <View style={[s.feeCard, { backgroundColor: surface, borderColor: border, borderTopColor: theme.primaryColor }]}>
+                <View style={s.feeTopRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.feeTitle, { color: theme.primaryColor }]}>Entry Fee: {feeFormatted}</Text>
+                    <Text style={[s.feeSub, { color: textSecondary }]}>Full transparency on how your fee is used</Text>
+                  </View>
+                  <View style={s.pubBadge}>
+                    <Text style={s.pubBadgeText}>PUBLIC</Text>
+                  </View>
+                </View>
+
+                <View style={[s.feeDivider, { backgroundColor: border }]} />
+
+                {[
+                  { icon: 'trophy-outline', color: '#10B981', label: 'Prize Pool (50%) — paid out to winners', value: `${feeCur}${prizePool.toLocaleString()}` },
+                  { icon: 'megaphone-outline', color: '#3B82F6', label: 'Marketing & Promotion (30%)', value: `${feeCur}${marketing.toLocaleString()}` },
+                  { icon: 'server-outline', color: '#8B5CF6', label: 'Platform Fee (20%) — servers & processing', value: `${feeCur}${platformFee.toLocaleString()}` },
+                ].map((row, i) => (
+                  <View key={i} style={s.feeRow}>
+                    <Ionicons name={row.icon as any} size={13} color={row.color} />
+                    <Text style={[s.feeLabel, { color: textSecondary }]}>{row.label}</Text>
+                    <Text style={[s.feeVal, { color: textPrimary }]}>{row.value}</Text>
+                  </View>
+                ))}
+
+                <View style={[s.feeDivider, { backgroundColor: border }]} />
+
+                <View style={[s.payNotice, { backgroundColor: '#ECFDF5', borderColor: '#10B98120' }]}>
+                  <Ionicons name="shield-checkmark-outline" size={16} color="#10B981" />
+                  <Text style={s.payNoticeText}>
+                    Secured by <Text style={{ fontWeight: '700' }}>Flutterwave</Text>. FameAfrica never stores your card details. You'll be redirected to a secure checkout page.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ════════════════════════════════════════════════════
             CTA BUTTON — inside ScrollView so it scrolls with
             content and is never covered by the keyboard
         ════════════════════════════════════════════════════ */}
-        <View style={s.ctaWrapper}>
-          <TouchableOpacity
-            style={[s.primaryBtn, { backgroundColor: theme.buttonColor }]}
-            onPress={goNext}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color={theme.textOnPrimary} />
-            ) : (
-              <View style={s.btnRow}>
-                <Text style={[s.primaryBtnText, { color: theme.textOnPrimary }]}>{CTALabel}</Text>
-                {step > 0 && step < 4 && (
-                  <Ionicons name="arrow-forward" size={17} color={theme.textOnPrimary} style={{ marginLeft: 6 }} />
-                )}
-              </View>
+          <View style={s.ctaWrapper}>
+            <TouchableOpacity
+              style={[s.primaryBtn, { backgroundColor: theme.buttonColor }]}
+              onPress={goNext}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.textOnPrimary} />
+              ) : (
+                <View style={s.btnRow}>
+                  <Text style={[s.primaryBtnText, { color: theme.textOnPrimary }]}>{CTALabel}</Text>
+                  {step > 0 && step < 4 && (
+                    <Ionicons name="arrow-forward" size={17} color={theme.textOnPrimary} style={{ marginLeft: 6 }} />
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {FooterNote.length > 0 && (
+              <Text style={[s.footerNote, { color: textSecondary }]}>{FooterNote}</Text>
             )}
-          </TouchableOpacity>
+          </View>
 
-          {FooterNote.length > 0 && (
-            <Text style={[s.footerNote, { color: textSecondary }]}>{FooterNote}</Text>
-          )}
-        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {
+        loading && (
+          <View style={s.fullLoadingOverlay}>
+            <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={s.loadingContent}>
+              <ActivityIndicator size="large" color={theme.primaryColor} />
+              <Text style={s.loadingOverlayTitle}>
+                {step === 4 ? 'Entering the Arena...' : 'Processing...'}
+              </Text>
+              <Text style={s.loadingOverlaySub}>
+                {step === 4
+                  ? 'Securing your spot and uploading your talent video. Please do not close the app.'
+                  : 'Getting things ready...'}
+              </Text>
+            </View>
+          </View>
+        )
+      }
+
+    </>
   )
 }
 
@@ -1108,5 +1131,30 @@ function makeStyles(
     optionText: { fontSize: scale(15) },
     emptyOption: { paddingVertical: 48, alignItems: 'center', gap: 10 },
     emptyOptionText: { fontSize: scale(13) },
+    fullLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 9999,
+    },
+    loadingContent: {
+      alignItems: 'center',
+      paddingHorizontal: 40,
+    },
+    loadingOverlayTitle: {
+      color: '#fff',
+      fontSize: scale(22),
+      fontWeight: '900',
+      marginTop: 20,
+      textAlign: 'center',
+      letterSpacing: -0.5,
+    },
+    loadingOverlaySub: {
+      color: 'rgba(255,255,255,0.7)',
+      fontSize: scale(14),
+      marginTop: 10,
+      textAlign: 'center',
+      lineHeight: scale(20),
+    },
   })
 }

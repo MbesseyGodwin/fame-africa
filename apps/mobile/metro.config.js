@@ -17,7 +17,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// 3. Force Metro to resolve hoisted dependencies from the workspace root
+config.resolver.sourceExts.push('jsx');
 config.resolver.disableHierarchicalLookup = true;
 
 module.exports = config;

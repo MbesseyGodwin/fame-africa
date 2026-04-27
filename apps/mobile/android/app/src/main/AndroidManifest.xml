@@ -31,7 +31,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="fameafrica"/>
-        <data android:scheme="exp+fameafrica-mobile"/>
+        <data android:scheme="exp+votenaija"/>
       </intent-filter>
     </activity>
   </application>

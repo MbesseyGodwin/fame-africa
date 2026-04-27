@@ -7,7 +7,9 @@ import {
   ActivityIndicator, Image,
   Alert
 } from 'react-native'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import {
   createAgoraRtcEngine,
@@ -15,107 +17,96 @@ import {
   ClientRoleType,
   RtcSurfaceView,
   IRtcEngine,
-  RenderModeType
+  VideoViewSetupMode
 } from 'react-native-agora'
-import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import { streamingApi } from '../../utils/api'
 import { LinearGradient } from 'expo-linear-gradient'
 
-const { width, height } = Dimensions.get('window')
-const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'agora_app_id_placeholder'
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
+const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || ''
 
 export default function LiveViewerScreen() {
   const { streamId } = useLocalSearchParams<{ streamId: string }>()
   const { user } = useAuth()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  
   const engine = useRef<IRtcEngine | null>(null)
-
+  
   const [loading, setLoading] = useState(true)
   const [loadingStatus, setLoadingStatus] = useState('Connecting to Virtual House...')
-  const [remoteUid, setRemoteUid] = useState<number | null>(null)
+  const [isJoined, setIsJoined] = useState(false)
   const [comments, setComments] = useState<any[]>([])
   const [commentText, setCommentText] = useState('')
   const [streamInfo, setStreamInfo] = useState<any>(null)
+  const [hostUid, setHostUid] = useState<number>(0)
 
   useEffect(() => {
     console.log('[LiveViewer] Mounting screen, streamId:', streamId)
     init()
+
     return () => {
-      console.log('[LiveViewer] Unmounting screen, cleaning up engine')
-      if (engine.current) {
-        engine.current.leaveChannel()
-        engine.current.release()
-      }
+      console.log('[LiveViewer] Unmounting screen, releasing engine')
+      engine.current?.leaveChannel()
+      engine.current?.release()
     }
   }, [])
 
   const init = async () => {
     try {
       // 1. Fetch stream info
-      console.log('[LiveViewer] Fetching stream info...')
       setLoadingStatus('Finding live session...')
       const res = await streamingApi.listLive() 
       const stream = res.data.data.find((s: any) => s.id === streamId)
       
       if (!stream) {
-        console.error('[LiveViewer] Stream not found or inactive')
         Alert.alert('Stream Ended', 'This live session is no longer active.')
         router.back()
         return
       }
       setStreamInfo(stream)
-      console.log('[LiveViewer] Stream info found, channel:', stream.channelName)
 
-      // 2. Get Agora Token
-      console.log('[LiveViewer] Fetching Agora token...')
-      setLoadingStatus('Fetching secure token...')
-      const tokenRes = await streamingApi.getToken(stream.channelName, 'SUBSCRIBER')
-      const token = tokenRes.data.data.token
-      console.log('[LiveViewer] Token received')
-
-      // 3. Initialize Engine
-      console.log('[LiveViewer] Initializing Agora engine with ID:', AGORA_APP_ID)
-      setLoadingStatus('Initializing engine...')
+      // 2. Initialize Agora
       engine.current = createAgoraRtcEngine()
       engine.current.initialize({ appId: AGORA_APP_ID })
 
       engine.current.registerEventHandler({
         onJoinChannelSuccess: (connection, elapsed) => {
-          console.log('[LiveViewer] Successfully joined channel:', connection.channelId)
+          console.log('[LiveViewer] Joined channel:', connection.channelId)
+          setIsJoined(true)
           setLoading(false)
         },
-        onUserJoined: (connection, remoteUid) => {
-          console.log('[LiveViewer] Host (Remote User) joined:', remoteUid)
-          setRemoteUid(remoteUid)
+        onUserJoined: (connection, remoteUid, elapsed) => {
+          console.log('[LiveViewer] Host joined:', remoteUid)
+          setHostUid(remoteUid)
         },
         onUserOffline: (connection, remoteUid, reason) => {
-          console.log('[LiveViewer] Host (Remote User) went offline:', remoteUid, 'Reason:', reason)
-          setRemoteUid(null)
-          Alert.alert('Stream Ended', 'The host has ended the broadcast.')
+          console.log('[LiveViewer] Host left:', remoteUid)
+          Alert.alert('Stream Ended', 'The host has ended the session.')
           router.back()
         },
         onError: (err, msg) => {
-          console.error('[LiveViewer] Agora error:', err, msg)
-          Alert.alert('Connection Error', `Failed to connect to stream. Code: ${err}\n${msg || ''}`)
-          setLoading(false)
+          console.error('[LiveViewer] Agora Error:', err, msg)
         }
       })
 
-      console.log('[LiveViewer] Setting up audience role...')
       engine.current.enableVideo()
+
+      // 3. Get token
+      const tokenRes = await streamingApi.getToken(stream.channelName, 'SUBSCRIBER')
+      const token = tokenRes.data.data.token
+
+      // 4. Join channel
       engine.current.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting)
       engine.current.setClientRole(ClientRoleType.ClientRoleAudience)
-
-      // 4. Join Channel
-      console.log('[LiveViewer] Joining channel...')
-      setLoadingStatus('Joining live channel...')
+      
       engine.current.joinChannel(token, stream.channelName, 0, {})
 
     } catch (error: any) {
       console.error('[LiveViewer] Initialization failed:', error)
-      Alert.alert('Error', error.message || 'Failed to connect to the live stream')
-      setLoading(false)
+      Alert.alert('Error', 'Failed to connect to the live stream')
+      router.back()
     }
   }
 
@@ -128,7 +119,6 @@ export default function LiveViewerScreen() {
     }
     setComments([newComment, ...comments])
     setCommentText('')
-    // Ideal: Emit via Socket.io to others
   }
 
   const handleReport = () => {
@@ -165,10 +155,10 @@ export default function LiveViewerScreen() {
   return (
     <View style={styles.container}>
       {/* Video Background */}
-      {remoteUid ? (
+      {hostUid !== 0 ? (
         <RtcSurfaceView
-          canvas={{ uid: remoteUid, renderMode: RenderModeType.RenderModeHidden }}
           style={StyleSheet.absoluteFill}
+          canvas={{ uid: hostUid, setupMode: VideoViewSetupMode.VideoViewSetupAdd }}
         />
       ) : (
         <View style={styles.placeholder}>
@@ -181,7 +171,7 @@ export default function LiveViewerScreen() {
       <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFill}>
 
         {/* Top Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <View style={styles.hostInfo}>
             <Image source={{ uri: streamInfo?.host?.photoUrl }} style={styles.avatar} />
             <View>
@@ -189,7 +179,13 @@ export default function LiveViewerScreen() {
               <Text style={styles.viewerCount}>{streamInfo?.viewerCount || 0} viewers</Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <InfoTooltip 
+              title="Watching Live" 
+              content="You're watching a live arena session. Support your favorite contestant by sending comments and hearts! Use the flag icon if you need to report inappropriate content." 
+              color="#fff"
+              iconSize={26}
+            />
             <TouchableOpacity 
               style={[styles.closeBtn, { backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 22 }]} 
               onPress={handleReport}

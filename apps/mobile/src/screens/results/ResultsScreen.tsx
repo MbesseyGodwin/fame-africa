@@ -1,12 +1,17 @@
 import React from 'react'
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import { eliminationsApi, competitionsApi } from '../../utils/api'
 import { useTheme } from '../../context/ThemeContext'
+import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 
 export default function ResultsScreen() {
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
 
   const { data: statsRes, isLoading } = useQuery({
     queryKey: ['standings'],
@@ -14,11 +19,11 @@ export default function ResultsScreen() {
   })
 
   const results = statsRes?.data?.data || []
-  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
+  const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad, insets)
 
   function renderResultItem({ item, index }: { item: any, index: number }) {
     const isOut = !!item.eliminatedAt
-    
+
     return (
       <View style={[s.row, isOut && { opacity: 0.6 }]}>
         <View style={s.rankBox}>
@@ -40,7 +45,19 @@ export default function ResultsScreen() {
   return (
     <View style={s.container}>
       <View style={s.headerCard}>
-        <Text style={s.headerTitle}>Live Standings</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="chevron-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={s.headerTitle}>Live Standings</Text>
+          </View>
+          <InfoTooltip
+            title="What are Standings?"
+            content="Standings show the current position of all participants. Those in the bottom positions are at risk of elimination during the daily reset. Vote for your favorites to keep them safe!"
+            color="#fff"
+          />
+        </View>
         <Text style={s.headerSub}>Updated in real-time. Keep voting to save your favorite!</Text>
       </View>
 
@@ -66,12 +83,14 @@ export default function ResultsScreen() {
   )
 }
 
-function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number) {
+function makeStyles(theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, pad: number, insets: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: bg },
     headerCard: {
       backgroundColor: theme.headerColor,
-      padding: 24,
+      paddingHorizontal: 24,
+      paddingTop: insets.top + 10,
+      paddingBottom: 24,
       borderBottomLeftRadius: 20,
       borderBottomRightRadius: 20,
     },

@@ -77,6 +77,17 @@ export async function registerAsParticipant(input: RegisterInput) {
     data: { role: UserRole.PARTICIPANT },
   })
 
+  // 2.1 Log Audit
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'REGISTER_PARTICIPANT',
+      entityType: 'Participant',
+      entityId: participant.id,
+      newValue: { displayName, cycleId, category, state, city, nationality }
+    }
+  })
+
   // 3. Dev Bypass Check
   const flwKey = process.env.FLUTTERWAVE_SECRET_KEY || ''
   const isRealKey = flwKey.startsWith('FLWSECK-') && !flwKey.includes('TEST')
@@ -195,6 +206,7 @@ export async function getParticipantBySlug(slug: string, userId?: string) {
     include: {
       user: { select: { id: true, displayName: true } },
       cycle: { select: { id: true, cycleName: true, status: true, votingOpen: true, votingClose: true } },
+      videos: true,
     },
   }) as any
 
@@ -220,6 +232,8 @@ export async function getParticipantBySlug(slug: string, userId?: string) {
     twitterUrl: participant.twitterUrl,
     tiktokUrl: participant.tiktokUrl,
     youtubeUrl: participant.youtubeUrl,
+    embeddedVideoUrl: participant.embeddedVideoUrl,
+    videos: participant.videos,
     voteLinkSlug: participant.voteLinkSlug,
     status: participant.status,
     cycle: participant.cycle,
@@ -322,6 +336,7 @@ export async function getParticipantDashboard(userId: string) {
     where: { userId },
     include: {
       cycle: true,
+      videos: true,
       dailyTallies: {
         orderBy: { voteDate: 'desc' },
         take: 7,
@@ -358,6 +373,7 @@ export async function getParticipantDashboard(userId: string) {
   return {
     participant: {
       ...participant,
+      videos: participant.videos,
       photoUrl: participant.photoUrl,
       videoUrl: participant.videoUrl ? await getTemporaryLink(participant.videoUrl) : null,
       campaignCardUrl: participant.campaignCardUrl ? await getTemporaryLink(participant.campaignCardUrl) : null,
@@ -424,7 +440,7 @@ export async function updateParticipantProfile(userId: string, data: Partial<Reg
   // Allowed fields for update
   const allowedUpdates = [
     'displayName', 'bio', 'state', 'city', 'category', 
-    'nationality', 'instagramUrl', 'twitterUrl', 'tiktokUrl', 'youtubeUrl'
+    'nationality', 'instagramUrl', 'twitterUrl', 'tiktokUrl', 'youtubeUrl', 'embeddedVideoUrl'
   ]
 
   const updateData: any = {}
@@ -441,6 +457,17 @@ export async function updateParticipantProfile(userId: string, data: Partial<Reg
   const updated = await prisma.participant.update({
     where: { id: participant.id },
     data: updateData
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'UPDATE_PARTICIPANT',
+      entityType: 'Participant',
+      entityId: participant.id,
+      oldValue: Object.keys(updateData).reduce((acc, key) => ({ ...acc, [key]: (participant as any)[key] }), {}),
+      newValue: updateData
+    }
   })
 
   // Re-generate campaign card if name changed
@@ -550,6 +577,15 @@ export async function requestWithdrawal(userId: string): Promise<void> {
     },
   })
 
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'REQUEST_WITHDRAWAL',
+      entityType: 'Participant',
+      entityId: participant.id
+    }
+  })
+
   const recipientName = participant.user.fullName || participant.displayName
   const recipientEmail = participant.user.email
 
@@ -637,6 +673,15 @@ export async function confirmWithdrawal(userId: string, token: string): Promise<
   await prisma.user.update({
     where: { id: userId },
     data: { role: 'VOTER' },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'CONFIRM_WITHDRAWAL',
+      entityType: 'Participant',
+      entityId: participant.id
+    }
   })
 
   // Send a goodbye / confirmation email

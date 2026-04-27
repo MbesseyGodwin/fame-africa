@@ -116,23 +116,31 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           {[
             { label: 'Votes today', value: todayDisplay.toLocaleString(), highlight: true },
             { label: 'Total votes', value: participant.totalVotes.toLocaleString() },
             { label: 'Current rank', value: `#${currentRank}` },
             { label: 'Competitors left', value: activeParticipants },
+            { 
+              label: 'Strikes', 
+              value: participant.totalStrikes, 
+              warning: participant.totalStrikes > 0,
+              highlight: participant.totalStrikes > 0 
+            },
           ].map((stat) => (
             <div
               key={stat.label}
               className={`rounded-theme p-4 ${
                 stat.highlight
-                  ? 'bg-accent border border-primary/20'
+                  ? stat.warning ? 'bg-orange-50 border border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/30' : 'bg-accent border border-primary/20'
                   : 'bg-card border border-gray-100 dark:border-gray-800'
               }`}
             >
               <p className="text-xs text-gray-500 mb-1">{stat.label}</p>
-              <p className={`text-2xl font-medium ${stat.highlight ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
+              <p className={`text-2xl font-medium ${
+                stat.warning ? 'text-orange-600' : stat.highlight ? 'text-primary' : 'text-gray-900 dark:text-white'
+              }`}>
                 {stat.value}
               </p>
             </div>

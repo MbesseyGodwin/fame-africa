@@ -45,6 +45,19 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function logoutAll(req: Request, res: Response, next: NextFunction) {
+  const userId = (req as any).user.id
+  logger.info('[AUTH] logoutAll', { userId, ip: req.ip })
+
+  try {
+    await AuthService.logoutAllDevices(userId)
+    return ApiResponse.success(res, null, 'Signed out of all devices successfully')
+  } catch (error: any) {
+    logger.error('[AUTH] logoutAll error', { userId, error: error.message })
+    next(error)
+  }
+}
+
 export async function sendOtp(req: Request, res: Response, next: NextFunction) {
   const { phone, purpose, email, participantId, cycleId } = req.body
   logger.info('[AUTH] sendOtp request', { phone, email, purpose, participantId, cycleId, ip: req.ip })

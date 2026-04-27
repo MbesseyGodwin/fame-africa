@@ -36,6 +36,7 @@ export default function AdminLayout({
           <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">Competition</div>
           <nav className="space-y-1 mb-6">
             <SidebarItem href="/admin" active={isActive('/admin')} label="Overview" icon="📊" />
+            <SidebarItem href="/admin/analytics" active={isActive('/admin/analytics')} label="Analytics" icon="📈" />
             <SidebarItem href="/admin/participants" active={isActive('/admin/participants')} label="Participants" icon="👥" />
             <SidebarItem href="/admin/eliminations" active={isActive('/admin/eliminations')} label="Eliminations" icon="⚔️" />
             <SidebarItem href="/admin/votes" active={isActive('/admin/votes')} label="Vote logs" icon="🗳️" />

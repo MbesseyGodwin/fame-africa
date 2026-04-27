@@ -27,44 +27,39 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="participants"
+        name="discovery"
         options={{
-          title: 'Candidates',
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="leaderboard"
-        options={{
-          title: 'Rankings',
-          tabBarIcon: ({ color, size }) => <Ionicons name="trophy" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="results"
-        options={{
-          title: 'Results',
-          tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          href: null,
+          title: 'FameFeed',
           headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="play-circle" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="battles"
+        options={{
+          title: 'Battles',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="flash" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
         }}
       />
+      {/* Hidden Tabs */}
+      <Tabs.Screen name="participants" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="leaderboard" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="results" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="notifications" options={{ href: null, headerShown: false }} />
     </Tabs>
   )
 }

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import * as crypto from 'crypto'
 import * as ParticipantsService from './participants.service'
+import { PaymentsService } from '../payments/payments.service'
 import { ApiResponse } from '../../utils/response'
 import { logger } from '../../utils/logger'
 
@@ -122,14 +123,19 @@ export async function handlePaymentWebhook(req: Request, res: Response, next: Ne
 
     // Flutterwave commonly sends "charge.completed"
     if (event === 'charge.completed' && data.status === 'successful') {
-      const participantId = data.meta?.participantId || data.customer?.metadata?.participantId
       const reference = data.tx_ref || data.flw_ref
       const amount = data.amount
 
+      // First check if it's a registration fee for an old participant
+      const participantId = data.meta?.participantId || data.customer?.metadata?.participantId
       if (participantId) {
         await ParticipantsService.confirmPaymentAndActivate(participantId, reference, amount)
-        logger.info(`Payment of ₦${amount} confirmed for participant ${participantId}`)
+      } else {
+        // Check if it's a Mega Vote or other transaction in the transactions table
+        await PaymentsService.handleSuccessfulPayment(reference, amount)
       }
+      
+      logger.info(`Payment of ₦${amount} confirmed for reference ${reference}`)
     }
 
     return res.status(200).json({ received: true })

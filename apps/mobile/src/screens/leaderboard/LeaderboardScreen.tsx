@@ -1,19 +1,22 @@
 import React from 'react'
 import {
   View, Text, StyleSheet, FlatList, Image, ActivityIndicator,
-  TouchableOpacity, SafeAreaView, Dimensions, RefreshControl
+  TouchableOpacity, Dimensions, RefreshControl
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../context/ThemeContext'
 import { leaderboardApi, competitionsApi } from '../../utils/api'
+import { InfoTooltip } from '../../components/common/InfoTooltip'
 
 const { width } = Dimensions.get('window')
 
 export default function LeaderboardScreen() {
   const { theme, textPrimary, textSecondary, bg, surface, border } = useTheme()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
 
   const { data: cycleData, isLoading: cycleLoading } = useQuery({
     queryKey: ['currentCycle'],
@@ -39,7 +42,7 @@ export default function LeaderboardScreen() {
   const top3 = leaderboard?.slice(0, 3) || []
   const rest = leaderboard?.slice(3) || []
 
-  const s = styles(theme, bg, surface, textPrimary, textSecondary, border)
+  const s = styles(theme, bg, surface, textPrimary, textSecondary, border, insets)
 
   const renderTop3 = () => {
     if (top3.length === 0) return null
@@ -118,9 +121,20 @@ export default function LeaderboardScreen() {
   )
 
   return (
-    <SafeAreaView style={s.container}>
+    <View style={s.container}>
       <View style={s.header}>
-        <Text style={s.headerTitle}>Live Leaderboard</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 16 }}>
+            <Ionicons name="chevron-back" size={24} color={textPrimary} />
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={s.headerTitle}>Live Leaderboard</Text>
+            <InfoTooltip 
+              title="How Rankings Work" 
+              content="Contestants are ranked by their total verified votes. This includes daily free votes and Mega Vote bundles. The leaderboard updates in real-time as votes are cast across Africa!" 
+            />
+          </View>
+        </View>
         <Text style={s.headerSub}>{cycleData?.cycleName || 'Current Cycle'}</Text>
       </View>
 
@@ -146,16 +160,22 @@ export default function LeaderboardScreen() {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={theme.primaryColor} />}
         />
       )}
-    </SafeAreaView>
+    </View>
   )
 }
 
-const styles = (theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string) => StyleSheet.create({
+const styles = (theme: any, bg: string, surface: string, textPrimary: string, textSecondary: string, border: string, insets: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   loadingText: { marginTop: 12, color: textSecondary, fontSize: 15 },
   
-  header: { alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: border },
+  header: { 
+    alignItems: 'center', 
+    paddingTop: insets.top + 10, 
+    paddingBottom: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: border 
+  },
   headerTitle: { fontSize: 20, fontWeight: '800', color: textPrimary },
   headerSub: { fontSize: 13, color: theme.primaryColor, fontWeight: '600', marginTop: 4, textTransform: 'uppercase' },
 
@@ -181,7 +201,7 @@ const styles = (theme: any, bg: string, surface: string, textPrimary: string, te
   podiumEmpty: { width: (width - 40) / 3 },
   crown: { fontSize: 24, marginBottom: 4 },
   podiumAvatarWrap: {
-    width: 64, height: 64, rounded: 32, borderRadius: 32, borderWidth: 3, 
+    width: 64, height: 64, borderRadius: 32, borderWidth: 3, 
     marginBottom: -16, zIndex: 10, backgroundColor: surface, overflow: 'hidden'
   },
   podiumAvatar: { width: '100%', height: '100%' },

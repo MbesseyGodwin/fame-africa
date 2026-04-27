@@ -24,8 +24,9 @@ export const notificationService = {
     body: string
     type: NotificationType
     data?: any
+    cycleId?: string
   }) {
-    const { userId, title, body, type, data } = params
+    const { userId, title, body, type, data, cycleId } = params
 
     // 1. Save to DB first
     const notification = await prisma.notification.create({
@@ -35,6 +36,7 @@ export const notificationService = {
         body,
         type,
         data: data || {},
+        cycleId: cycleId || null,
       },
     })
 
@@ -107,5 +109,55 @@ export const notificationService = {
       where: { id: userId },
       data: { pushToken },
     })
+  },
+
+  /**
+   * Sends an email notification.
+   */
+  async sendEmailNotification(params: {
+    userId: string
+    subject: string
+    html: string
+    text?: string
+  }) {
+    const { userId, subject, html, text } = params
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+    
+    if (!user?.email) {
+      logger.warn(`Cannot send email to user ${userId}: No email found.`)
+      return
+    }
+
+    const { emailTransporter } = await import('../../utils/emailTransporter')
+    await emailTransporter.sendMail({
+      to: user.email,
+      subject,
+      html,
+      text
+    })
+  },
+
+  /**
+   * Unified method to send both push and email notifications.
+   */
+  async notifyUser(params: {
+    userId: string
+    title: string
+    body: string
+    type: NotificationType
+    data?: any
+    emailSubject?: string
+    emailHtml?: string
+    cycleId?: string
+  }) {
+    const { userId, title, body, type, data, emailSubject, emailHtml, cycleId } = params
+
+    // 1. Send Push/Save to DB
+    await this.sendPushNotification({ userId, title, body, type, data, cycleId })
+
+    // 2. Send Email if content provided
+    if (emailSubject && emailHtml) {
+      await this.sendEmailNotification({ userId, subject: emailSubject, html: emailHtml })
+    }
   }
 }
