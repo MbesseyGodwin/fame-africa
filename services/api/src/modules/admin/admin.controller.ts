@@ -1184,3 +1184,180 @@ function getDayNumber(votingOpen: Date): number {
   return Math.max(0, Math.floor((today.getTime() - open.getTime()) / (1000 * 60 * 60 * 24)) + 1)
 }
 
+// ── Session & Security ──────────────────────────────────────────
+
+export async function forceLogout(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const adminId = (req as any).user.id
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { tokenVersion: { increment: 1 } },
+      select: { id: true, email: true }
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'FORCE_LOGOUT',
+        entityType: 'User',
+        entityId: id,
+        newValue: { description: 'All sessions invalidated by admin' }
+      }
+    })
+
+    return ApiResponse.success(res, null, `User ${user.email} has been logged out from all devices.`)
+  } catch (error) { next(error) }
+}
+
+export async function getUserLoginHistory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const user = await prisma.user.findUnique({ where: { id }, select: { email: true } })
+    if (!user) return ApiResponse.notFound(res, 'User not found')
+
+    const [auditLogs, failedLogins] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: { userId: id, action: { in: ['LOGIN', 'LOGOUT', 'REFRESH_TOKEN'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 20
+      }),
+      prisma.failedLogin.findMany({
+        where: { email: user.email },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      })
+    ])
+
+    return ApiResponse.success(res, { auditLogs, failedLogins })
+  } catch (error) { next(error) }
+}
+
+// ── KYC Management ──────────────────────────────────────────────
+
+export async function listKycRecords(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { status, page = '1', limit = '50' } = req.query as Record<string, string>
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+
+    const where: any = {}
+    if (status) where.status = status
+
+    const [records, total] = await Promise.all([
+      prisma.kycRecord.findMany({
+        where,
+        include: { user: { select: { fullName: true, email: true, phone: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.kycRecord.count({ where })
+    ])
+
+    const { getTemporaryLink } = await import('../../utils/dropboxUploader')
+    const resolved = await Promise.all(records.map(async (r) => ({
+      ...r,
+      idImageUrl: r.idImageUrl ? await getTemporaryLink(r.idImageUrl) : null
+    })))
+
+    return ApiResponse.paginated(res, resolved, total, parseInt(page), parseInt(limit))
+  } catch (error) { next(error) }
+}
+
+export async function updateKycStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const { status, reason } = req.body
+    const adminId = (req as any).user.id
+
+    const record = await prisma.kycRecord.update({
+      where: { id },
+      data: { status, rejectionReason: reason },
+      include: { user: true }
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'UPDATE_KYC_STATUS',
+        entityType: 'KycRecord',
+        entityId: id,
+        newValue: { status, reason }
+      }
+    })
+
+    // Notify user
+    const { notificationService } = await import('../notifications/notification.service')
+    await notificationService.notifyUser({
+      userId: record.userId,
+      title: status === 'APPROVED' ? 'KYC Approved' : 'KYC Rejected',
+      body: status === 'APPROVED' ? 'Your identity verification has been approved.' : `Your KYC was rejected: ${reason}`,
+      type: 'ADMIN_ACTION'
+    })
+
+    return ApiResponse.success(res, record, `KYC status updated to ${status}`)
+  } catch (error) { next(error) }
+}
+
+// ── Transactions ────────────────────────────────────────────────
+
+export async function listTransactions(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { status, type, page = '1', limit = '50' } = req.query as Record<string, string>
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+
+    const where: any = {}
+    if (status) where.status = status
+    if (type) where.type = type
+
+    const [txs, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: { user: { select: { email: true, fullName: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.transaction.count({ where })
+    ])
+
+    return ApiResponse.paginated(res, txs, total, parseInt(page), parseInt(limit))
+  } catch (error) { next(error) }
+}
+
+// ── Security Alerts ─────────────────────────────────────────────
+
+export async function getSecurityAlerts(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { resolved = 'false', page = '1', limit = '50' } = req.query as Record<string, string>
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+
+    const where: any = { isResolved: resolved === 'true' }
+
+    const [alerts, total] = await Promise.all([
+      prisma.securityAlert.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.securityAlert.count({ where })
+    ])
+
+    return ApiResponse.paginated(res, alerts, total, parseInt(page), parseInt(limit))
+  } catch (error) { next(error) }
+}
+
+export async function resolveSecurityAlert(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const alert = await prisma.securityAlert.update({
+      where: { id },
+      data: { isResolved: true, resolvedAt: new Date() }
+    })
+    return ApiResponse.success(res, alert, 'Security alert marked as resolved')
+  } catch (error) { next(error) }
+}
+
+

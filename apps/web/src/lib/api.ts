@@ -227,11 +227,21 @@ export const adminApi = {
     api.get(`/admin/participants/${id}/strikes`),
   removeStrike: (id: string, strikeId: string) => 
     api.delete(`/admin/participants/${id}/strikes/${strikeId}`),
-  forceWinner: (cycleId: string, participantId: string) => 
-    api.post(`/admin/cycles/${cycleId}/force-winner/${participantId}`),
   forceCycleStatus: (cycleId: string, status: string) => 
     api.post(`/admin/cycles/${cycleId}/force-status`, { status }),
+  
+  // Security Alerts
+  getSecurityAlerts: (params?: any) => api.get('/admin/security/alerts', { params }),
+  resolveSecurityAlert: (id: string) => api.put(`/admin/security/alerts/${id}/resolve`),
+
+  // Transactions
+  getTransactions: (params?: any) => api.get('/admin/transactions', { params }),
+
+  // KYC
+  getKycRecords: (params?: any) => api.get('/admin/kyc', { params }),
+  updateKycStatus: (id: string, status: string, reason?: string) => api.put(`/admin/kyc/${id}/status`, { status, reason }),
 }
+
 
 export const adminUsersApi = {
   listUsers: (params?: any) => api.get('/admin/users', { params }),
@@ -239,7 +249,10 @@ export const adminUsersApi = {
   updateRole: (id: string, role: string) => api.put(`/admin/users/${id}/role`, { role }),
   banUser: (id: string, reason: string) => api.put(`/admin/users/${id}/ban`, { reason }),
   unbanUser: (id: string) => api.put(`/admin/users/${id}/unban`),
+  forceLogout: (id: string) => api.post(`/admin/users/${id}/logout`),
+  getLoginHistory: (id: string) => api.get(`/admin/users/${id}/login-history`),
 }
+
 
 export const adminStatsApi = {
   getOverview: (cycleId?: string) => api.get('/admin/stats/overview', { params: { cycleId } }),

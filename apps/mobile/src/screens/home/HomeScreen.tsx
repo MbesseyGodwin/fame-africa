@@ -63,7 +63,7 @@ export default function HomeScreen() {
 
 
   const cycle = cycleRes?.data?.data
-  
+
   useEffect(() => {
     if (cycle) {
       console.log("📦 Active Cycle:", cycle.cycleName)
@@ -87,6 +87,36 @@ export default function HomeScreen() {
     if (hour < 12) return 'Good morning'
     if (hour < 17) return 'Good afternoon'
     return 'Good evening'
+  }
+
+  const getShowDay = () => {
+    if (!cycle || !cycle.votingOpen) return 1
+    const start = new Date(cycle.votingOpen)
+    const now = new Date()
+    const diff = now.getTime() - start.getTime()
+    const day = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1
+    return day > 0 ? day : 1
+  }
+
+  const getDaysLeft = () => {
+    if (!cycle || !cycle.votingClose) return null
+    const end = new Date(cycle.votingClose)
+    const now = new Date()
+    const diff = end.getTime() - now.getTime()
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+    return days > 0 ? days : 0
+  }
+
+  const calculateProgress = () => {
+    if (!cycle || !cycle.votingOpen || !cycle.votingClose) return 0
+    const start = new Date(cycle.votingOpen).getTime()
+    const end = new Date(cycle.votingClose).getTime()
+    const now = new Date().getTime()
+    if (now < start) return 0
+    if (now > end) return 100
+    const total = end - start
+    const elapsed = now - start
+    return Math.round((elapsed / total) * 100)
   }
 
   return (
@@ -122,12 +152,39 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* FIXED TOP STATUS BAR: Day Counter & Progress */}
+      {cycle?.status === 'VOTING_OPEN' && (
+        <View style={s.topStatusWidget}>
+          <View style={s.statusMain}>
+            <View style={s.dayInfo}>
+              <Text style={s.statusLabel}>CURRENT STATUS</Text>
+              <Text style={s.bigDayText}>DAY {getShowDay()}</Text>
+            </View>
+            
+            <View style={s.progressSummary}>
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>{calculateProgress()}% COMPLETE</Text>
+                <Text style={s.summaryValue}>{getDaysLeft()} DAYS LEFT</Text>
+              </View>
+              <View style={s.statusProgressBg}>
+                <View style={[s.statusProgressFill, { width: `${calculateProgress()}%` }]} />
+              </View>
+            </View>
+          </View>
+          <View style={s.statusBottom}>
+            <Ionicons name="time" size={12} color={theme.primaryColor} />
+            <Text style={s.statusDateRange}>
+              Season ends {new Date(cycle.votingClose).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </Text>
+          </View>
+        </View>
+      )}
+
       <ScrollView
         style={s.container}
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primaryColor} />}
       >
-        
         {/* Live Now Carousel */}
         {liveRes?.data?.data?.length > 0 && (
           <View style={{ marginBottom: 20 }}>
@@ -241,21 +298,21 @@ export default function HomeScreen() {
         {/* Quick Links Section */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 12 }}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary }}>Explore FameAfrica</Text>
-          <InfoTooltip 
-            title="What's FameAfrica?" 
-            content="FameAfrica is the continent's premier digital talent competition. Watch live streams, vote for your favorite contestants, participate in head-to-head battles, and help your favorites win amazing prizes!" 
+          <InfoTooltip
+            title="What's FameAfrica?"
+            content="FameAfrica is the continent's premier digital talent competition. Watch live streams, vote for your favorite contestants, participate in head-to-head battles, and help your favorites win amazing prizes!"
           />
         </View>
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-          <TouchableOpacity 
-            style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0, backgroundColor: theme.primaryColor + '15' }]} 
+          <TouchableOpacity
+            style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0, backgroundColor: theme.primaryColor + '15' }]}
             onPress={() => router.push('/(tabs)/participants')}
           >
             <Ionicons name="people" size={24} color={theme.primaryColor} />
             <Text style={{ fontSize: 13, fontWeight: '700', marginTop: 8, color: theme.primaryColor }}>VOTE NOW</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]} 
+          <TouchableOpacity
+            style={[s.card, { flex: 1, alignItems: 'center', marginBottom: 0 }]}
             onPress={() => router.push('/(tabs)/leaderboard')}
           >
             <Ionicons name="trophy" size={24} color="#D4AF37" />
@@ -398,8 +455,8 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     outPillText: { color: '#A32D2D', fontSize: 10, fontWeight: '500' },
     topHeader: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingHorizontal: 20, 
-      paddingTop: insets.top || 20, 
+      paddingHorizontal: 20,
+      paddingTop: insets.top || 20,
       paddingBottom: 16,
       backgroundColor: surface,
     },
@@ -437,6 +494,85 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     },
     tagMuted: {
       backgroundColor: 'rgba(255,255,255,0.08)',
+    },
+
+    // Top Status Widget
+    topStatusWidget: {
+      backgroundColor: surface,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    statusMain: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    dayInfo: { flex: 1 },
+    statusLabel: {
+      fontSize: 9,
+      fontWeight: '900',
+      color: textSecondary,
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    bigDayText: {
+      fontSize: 28,
+      fontWeight: '900',
+      color: theme.primaryColor,
+      letterSpacing: -1,
+    },
+    progressSummary: {
+      flex: 1,
+      alignItems: 'flex-end',
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+      marginBottom: 8,
+    },
+    summaryLabel: {
+      fontSize: 8,
+      fontWeight: '900',
+      color: textSecondary,
+    },
+    summaryValue: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: textPrimary,
+    },
+    statusProgressBg: {
+      width: '100%',
+      height: 6,
+      backgroundColor: border,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    statusProgressFill: {
+      height: '100%',
+      backgroundColor: theme.primaryColor,
+      borderRadius: 3,
+    },
+    statusBottom: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: border + '50',
+    },
+    statusDateRange: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: textSecondary,
     },
   })
 }

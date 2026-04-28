@@ -8,6 +8,8 @@ import { AppError } from '../../utils/errors'
 import { logger } from '../../utils/logger'
 import { getTemporaryLink } from '../../utils/dropboxUploader'
 import * as StansService from '../stans/stans.service'
+import { normalizePhone, getTodayDate } from '../voting/voting.service'
+import { hashValue } from '../../utils/crypto'
 
 
 interface RegisterInput {
@@ -240,7 +242,31 @@ export async function getParticipantBySlug(slug: string, userId?: string) {
     totalVotes: participant.totalVotes,
     stanCount: participant.stanCount,
     isStanning: userId ? await StansService.checkStanningStatus(userId, participant.id) : false,
+    hasVotedToday: await checkUserVotedToday(userId, participant.cycle.id),
   }
+}
+
+async function checkUserVotedToday(userId?: string, cycleId?: string): Promise<boolean> {
+  if (!userId || !cycleId) return false
+  
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) return false
+
+  const today = getTodayDate()
+  const emailHash = hashValue(user.email)
+  const phoneHash = user.phone ? hashValue(normalizePhone(user.phone)) : null
+  
+  const vote = await prisma.vote.findFirst({
+    where: {
+      OR: [
+        { voterEmailHash: emailHash },
+        ...(phoneHash ? [{ voterPhoneHash: phoneHash }] : [])
+      ],
+      cycleId,
+      voteDate: today
+    }
+  })
+  return !!vote
 }
 
 export async function generateParticipantCard(participantId: string): Promise<string> {
@@ -541,10 +567,6 @@ async function generateUniqueSlug(displayName: string): Promise<string> {
   return slug
 }
 
-function getTodayDate(): Date {
-  const now = new Date()
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-}
 
 // ── Withdrawal Flow ────────────────────────────────────────────
 

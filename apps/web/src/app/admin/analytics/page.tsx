@@ -1,15 +1,15 @@
 'use client'
 
-import React from 'react'
+import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
-import { 
-  TrendingUp, Users, DollarSign, ShieldAlert, Award, 
-  ArrowUpRight, ArrowDownRight, Activity, MapPin 
+import {
+  TrendingUp, Users, DollarSign, ShieldAlert, Award,
+  ArrowUpRight, ArrowDownRight, Activity, MapPin, Monitor
 } from 'lucide-react'
 
 const COLORS = ['#534AB7', '#7C72F8', '#A29BFF', '#C7C4FF', '#EEEDFE']
@@ -42,32 +42,32 @@ export default function AnalyticsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          label="Total Revenue" 
-          value={`₦${summary?.totalRevenue?.toLocaleString()}`} 
-          icon={<DollarSign className="w-5 h-5" />} 
-          trend="+12.5%" 
+        <StatCard
+          label="Total Revenue"
+          value={`₦${summary?.totalRevenue?.toLocaleString()}`}
+          icon={<Monitor className="w-5 h-5" /> as any}
+          trend="+12.5%"
           color="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
         />
-        <StatCard 
-          label="Active Users" 
-          value={summary?.totalUsers?.toLocaleString()} 
-          icon={<Users className="w-5 h-5" />} 
-          trend="+8.2%" 
+        <StatCard
+          label="Active Users"
+          value={summary?.totalUsers?.toLocaleString()}
+          icon={<Users className="w-5 h-5" /> as any}
+          trend="+8.2%"
           color="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
         />
-        <StatCard 
-          label="Total Participants" 
-          value={summary?.totalParticipants?.toLocaleString()} 
-          icon={<Award className="w-5 h-5" />} 
-          trend="+5.4%" 
+        <StatCard
+          label="Total Participants"
+          value={summary?.totalParticipants?.toLocaleString()}
+          icon={<Award className="w-5 h-5" /> as any}
+          trend="+5.4%"
           color="bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"
         />
-        <StatCard 
-          label="Security Alerts" 
-          value={summary?.securityAlertsCount?.toLocaleString()} 
-          icon={<ShieldAlert className="w-5 h-5" />} 
-          trend="-2.1%" 
+        <StatCard
+          label="Security Alerts"
+          value={summary?.securityAlertsCount?.toLocaleString()}
+          icon={<ShieldAlert className="w-5 h-5" /> as any}
+          trend="-2.1%"
           color="bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
         />
       </div>
@@ -79,20 +79,20 @@ export default function AnalyticsPage() {
             <AreaChart data={dailyVotes}>
               <defs>
                 <linearGradient id="colorVotes" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#534AB7" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#534AB7" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#534AB7" stopOpacity={0.1} />
+                  <stop offset="95%" stopColor="#534AB7" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis 
-                dataKey="date" 
-                axisLine={false} 
-                tickLine={false} 
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
                 tick={{ fontSize: 12, fill: '#64748B' }}
                 minTickGap={30}
               />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
               />
               <Area type="monotone" dataKey="votes" stroke="#534AB7" strokeWidth={2} fillOpacity={1} fill="url(#colorVotes)" />
@@ -107,7 +107,7 @@ export default function AnalyticsPage() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} minTickGap={30} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
-              <Tooltip 
+              <Tooltip
                 cursor={{ fill: '#F1F5F9' }}
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
               />
@@ -134,13 +134,13 @@ export default function AnalyticsPage() {
                 ))}
               </Pie>
               <Tooltip />
-              <Legend verticalAlign="bottom" height={36}/>
+              <Legend verticalAlign="bottom" height={36} />
             </PieChart>
           </ResponsiveContainer>
         </ChartContainer>
 
         {/* Top Participants List */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-400 dark:border-gray-800 overflow-hidden">
           <div className="p-6 border-b border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Top Participants</h3>
           </div>
@@ -174,9 +174,9 @@ export default function AnalyticsPage() {
                     <td className="px-6 py-4">
                       <span className={`
                         px-2 py-0.5 rounded-full text-[11px] font-bold
-                        ${i === 0 ? 'bg-yellow-100 text-yellow-700' : 
-                          i === 1 ? 'bg-gray-100 text-gray-600' : 
-                          i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-blue-50 text-blue-600'}
+                        ${i === 0 ? 'bg-yellow-100 text-yellow-700' :
+                          i === 1 ? 'bg-gray-100 text-gray-600' :
+                            i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-blue-50 text-blue-600'}
                       `}>
                         #{i + 1}
                       </span>
@@ -195,13 +195,13 @@ export default function AnalyticsPage() {
 function StatCard({ label, value, icon, trend, color }: any) {
   const isPositive = trend.startsWith('+')
   return (
-    <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:shadow-sm transition-all group">
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-400 dark:border-gray-800 hover:shadow-sm transition-all group">
       <div className="flex items-center justify-between mb-4">
         <div className={`p-2.5 rounded-xl ${color} transition-transform group-hover:scale-110`}>
           {icon}
         </div>
         <div className={`flex items-center gap-1 text-[12px] font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-          {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+          {isPositive ? <ArrowUpRight className="w-3 h-3" /> as any : <ArrowDownRight className="w-3 h-3" /> as any}
           {trend}
         </div>
       </div>
@@ -215,7 +215,7 @@ function StatCard({ label, value, icon, trend, color }: any) {
 
 function ChartContainer({ title, subtitle, children, className = '' }: any) {
   return (
-    <div className={`bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 ${className}`}>
+    <div className={`bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-400 dark:border-gray-800 ${className}`}>
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
         <p className="text-[12px] text-gray-500">{subtitle}</p>

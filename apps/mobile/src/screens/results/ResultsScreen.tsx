@@ -1,3 +1,5 @@
+// apps/mobile/src/screens/results/ResultsScreen.tsx
+
 import React from 'react'
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'

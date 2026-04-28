@@ -69,8 +69,9 @@ adminRouter.get('/eliminations/queue', AdminController.getEliminationQueue)
 adminRouter.post('/eliminations/run', AdminController.triggerElimination)
 
 // Fraud
-adminRouter.get('/fraud-flags', AdminController.getFraudFlags)
 adminRouter.put('/fraud-flags/:id/resolve', AdminController.resolveFraudFlag)
+adminRouter.get('/security/alerts', AdminController.getSecurityAlerts)
+adminRouter.put('/security/alerts/:id/resolve', AdminController.resolveSecurityAlert)
 
 // Audit log
 adminRouter.get('/audit-log/export', AdminController.exportAuditLog)
@@ -81,6 +82,11 @@ adminRouter.get('/sponsors', AdminController.getSponsors)
 adminRouter.post('/sponsors', AdminController.createSponsor)
 adminRouter.put('/sponsors/:id', AdminController.updateSponsor)
 adminRouter.delete('/sponsors/:id', AdminController.deleteSponsor)
+adminRouter.get('/transactions', AdminController.listTransactions)
+adminRouter.get('/kyc', AdminController.listKycRecords)
+adminRouter.put('/kyc/:id/status', [
+  body('status').isIn(['PENDING', 'APPROVED', 'REJECTED']),
+], validateRequest, AdminController.updateKycStatus)
 
 // Users
 adminRouter.get('/users', AdminController.listUsers)
@@ -90,6 +96,8 @@ adminRouter.put('/users/:id/role', [
 ], validateRequest, AdminController.updateUserRole)
 adminRouter.put('/users/:id/ban', AdminController.banUser)
 adminRouter.put('/users/:id/unban', AdminController.unbanUser)
+adminRouter.post('/users/:id/logout', AdminController.forceLogout)
+adminRouter.get('/users/:id/login-history', AdminController.getUserLoginHistory)
 
 // Platform stats
 adminRouter.get('/stats/overview', AdminController.getPlatformStats)

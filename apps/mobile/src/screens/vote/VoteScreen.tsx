@@ -1,7 +1,7 @@
 // apps/mobile/src/screens/vote/VoteScreen.tsx
 
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions,
@@ -22,6 +22,7 @@ import ViewShot from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import { ParticipantCampaignCard } from '../../components/ParticipantCampaignCard'
 import { InfoTooltip } from '../../components/common/InfoTooltip'
+import { useAuth } from '../../context/AuthContext'
 
 const { width } = Dimensions.get('window')
 
@@ -58,6 +59,7 @@ function getEmbedUrl(url: string): string | null {
 type Step = 'form' | 'otp' | 'success'
 
 export default function VoteScreen() {
+  const { user, isAuthenticated } = useAuth()
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const { theme, bg, surface, textPrimary, textSecondary, border, pad } = useTheme()
   const router = useRouter()
@@ -74,6 +76,14 @@ export default function VoteScreen() {
 
   const [webModalVisible, setWebModalVisible] = useState(false)
   const [activeWebUrl, setActiveWebUrl] = useState('')
+
+  // ── Auto-map User Details ──────────────────────────────────
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (!phone && user.phone) setPhone(user.phone)
+      if (!email && user.email) setEmail(user.email)
+    }
+  }, [isAuthenticated, user])
 
   // ── Data Fetching ───────────────────────────────────────────
   const { data: pRes, isLoading: participantLoading } = useQuery({
@@ -398,12 +408,31 @@ export default function VoteScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <Text style={s.cardTitle}>Cast your vote</Text>
                 <InfoTooltip
-                  title="Daily Voting"
-                  content="Each fan can cast one free vote per contestant every 24 hours. Enter your details to receive a verification OTP to secure your vote."
+                  title="Secure Voting"
+                  content="To maintain a fair competition and ensure every vote is authentic, we verify your identity via OTP. This prevents automated voting and guarantees the integrity of the results."
                 />
               </View>
 
-              {participant.cycle?.status !== 'VOTING_OPEN' ? (
+              {participant.hasVotedToday ? (
+                <View style={s.votedContainer}>
+                  <View style={s.votedIconCircle}>
+                    <Ionicons name="checkmark-circle" size={40} color={theme.primaryColor} />
+                  </View>
+                  <Text style={s.votedTitle}>Daily Free Vote Cast!</Text>
+                  <Text style={s.votedSub}>
+                    You have already supported {participant.displayName} with your free vote today. 
+                    Come back in 24 hours to cast another free vote!
+                  </Text>
+                  
+                  <View style={s.votedHighlight}>
+                    <Ionicons name="flash" size={16} color={theme.primaryColor} />
+                    <Text style={s.votedHighlightText}>WANT TO VOTE AGAIN NOW?</Text>
+                  </View>
+                  <Text style={s.votedMegaText}>
+                    Use the Mega Vote section below to boost {participant.displayName} with unlimited paid votes!
+                  </Text>
+                </View>
+              ) : participant.cycle?.status !== 'VOTING_OPEN' ? (
                 <View style={s.lockedContainer}>
                   <View style={s.lockCircle}>
                     <Ionicons name="lock-closed" size={32} color={textSecondary} />
@@ -423,32 +452,44 @@ export default function VoteScreen() {
                 </View>
               ) : (
                 <View style={s.formContainer}>
-                  <Text style={s.instruction}>Enter your details below to verify your identity</Text>
+                  <Text style={s.instruction}>
+                    {isAuthenticated 
+                      ? `Verify your session to cast an authentic vote` 
+                      : `Verify your identity to ensure a fair vote`}
+                  </Text>
 
                   <View style={s.inputGroup}>
                     <Text style={s.inputLabel}>Phone Number (Optional)</Text>
                     <TextInput
-                      style={s.input}
+                      style={[s.input, isAuthenticated && { opacity: 0.7, backgroundColor: surface + '50' }]}
                       value={phone}
                       onChangeText={setPhone}
                       placeholder="080 0000 0000"
                       placeholderTextColor={textSecondary}
                       keyboardType="phone-pad"
+                      editable={!isAuthenticated}
                     />
                   </View>
 
                   <View style={s.inputGroup}>
                     <Text style={s.inputLabel}>Email Address</Text>
                     <TextInput
-                      style={s.input}
+                      style={[s.input, isAuthenticated && { opacity: 0.7, backgroundColor: surface + '50' }]}
                       value={email}
                       onChangeText={setEmail}
                       placeholder="name@email.com"
                       placeholderTextColor={textSecondary}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      editable={!isAuthenticated}
                     />
                   </View>
+
+                  {isAuthenticated && (
+                    <Text style={{ fontSize: 10, color: textSecondary, marginTop: -12, marginBottom: 16, textAlign: 'center' }}>
+                      Locked to your account. To update, visit <Text style={{ color: theme.primaryColor }}>Settings</Text> or contact support.
+                    </Text>
+                  )}
 
                   <Text style={{ fontSize: 11, color: textSecondary, textAlign: 'center', marginBottom: 16 }}>
                     By proceeding, you agree to our <Text style={{ color: theme.primaryColor, fontWeight: '600' }}>Terms</Text>. All votes are final and non-refundable.
@@ -465,6 +506,10 @@ export default function VoteScreen() {
                       <Text style={s.primaryBtnText}>Send Verification OTP</Text>
                     )}
                   </TouchableOpacity>
+
+                  <Text style={{ fontSize: 10, color: textSecondary, textAlign: 'center', marginTop: 8, fontStyle: 'italic' }}>
+                    * We use OTP to verify you are a real person and protect the competition integrity.
+                  </Text>
 
                   <View style={s.hintBox}>
                     <Ionicons name="shield-checkmark" size={14} color={textSecondary} />
@@ -951,6 +996,15 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
 
     hintBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16 },
     hint: { fontSize: 11, color: textSecondary, fontWeight: '500' },
+
+    // Voted State
+    votedContainer: { alignItems: 'center', paddingVertical: 20 },
+    votedIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.primaryColor + '10', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+    votedTitle: { fontSize: 18, fontWeight: '800', color: textPrimary, marginBottom: 8, textAlign: 'center' },
+    votedSub: { fontSize: 13, color: textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20, paddingHorizontal: 20 },
+    votedHighlight: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.primaryColor + '10', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 8 },
+    votedHighlightText: { fontSize: 10, fontWeight: '900', color: theme.primaryColor, letterSpacing: 1 },
+    votedMegaText: { fontSize: 11, color: textSecondary, textAlign: 'center', fontStyle: 'italic', paddingHorizontal: 30 },
 
     otpInput: {
       height: 80,

@@ -10,13 +10,19 @@ export const leaderboardRouter = Router()
 // GET /leaderboard — Current cycle leaderboard
 leaderboardRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { page = '1', limit = '50' } = req.query as Record<string, string>
+    const { cycleId, page = '1', limit = '50' } = req.query as Record<string, string>
     const skip = (parseInt(page) - 1) * parseInt(limit)
 
-    const cycle = await prisma.competitionCycle.findFirst({
-      where: { status: { in: ['VOTING_OPEN', 'REGISTRATION_OPEN'] } },
-      orderBy: { createdAt: 'desc' },
-    })
+    let cycle
+    if (cycleId && cycleId !== 'undefined') {
+      cycle = await prisma.competitionCycle.findUnique({ where: { id: cycleId } })
+    } else {
+      cycle = await prisma.competitionCycle.findFirst({
+        where: { status: { in: ['VOTING_OPEN', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED'] } },
+        orderBy: { createdAt: 'desc' },
+      })
+    }
+    
     if (!cycle) return ApiResponse.success(res, { leaderboard: [], cycle: null })
 
     const [participants, total] = await Promise.all([

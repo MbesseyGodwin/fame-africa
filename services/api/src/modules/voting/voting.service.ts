@@ -97,7 +97,10 @@ export async function sendVoteOtp(input: SendVoteOtpInput) {
   const sponsor = await getActiveSponsorForAd(cycle.id)
   const sponsorLine = sponsor ? `<p style="font-size: 13px; color: #666;"><em>This competition is powered by ${sponsor.companyName}.</em></p>` : ''
 
-  // 1. Send OTP via Email (Mandatory)
+  let emailSent = false
+  let smsSent = false
+
+  // 1. Send OTP via Email
   try {
     await emailTransporter.sendMail({
       to: normalizedEmail,
@@ -110,26 +113,43 @@ export async function sendVoteOtp(input: SendVoteOtpInput) {
           <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #A32D2D; border-radius: 5px; margin: 20px 0;">
             ${otpCode}
           </div>
-          <p>This code is valid for 5 minutes. If you did not request this, please ignore this email.</p>
+          <p>This code is valid for 5 minutes. We use this to ensure that every vote cast is authentic and to prevent automated voting.</p>
+          <p>If you did not request this, please ignore this email.</p>
           ${sponsorLine}
         </div>
       `,
     })
+    emailSent = true
   } catch (err) {
     logger.error('Failed to send vote OTP email', err)
-    throw new AppError('Failed to send verification email. Please try again.', 500)
   }
 
-  // 2. Send OTP via SMS (Optional)
+  // 2. Send OTP via SMS
   if (normalizedPhone) {
-    const smsSponsorLine = sponsor ? ` Powered by ${sponsor.companyName}.` : ''
-    await sendSms(
-      normalizedPhone,
-      `Your FameAfrica code is ${otpCode}. Valid for 5 minutes. Use it to vote for ${participant.displayName}.${smsSponsorLine}`
-    ).catch(err => logger.warn('Failed to send vote OTP SMS', err))
+    try {
+      const smsSponsorLine = sponsor ? ` Powered by ${sponsor.companyName}.` : ''
+      await sendSms(
+        normalizedPhone,
+        `Your FameAfrica code is ${otpCode}. Valid for 5 mins. Use it to verify your vote for ${participant.displayName}.${smsSponsorLine}`
+      )
+      smsSent = true
+    } catch (err) {
+      logger.warn('Failed to send vote OTP SMS', err)
+    }
   }
 
-  return { message: 'OTP sent via email' + (normalizedPhone ? ' and SMS' : ''), participantName: participant.displayName }
+  if (!emailSent && !smsSent) {
+    throw new AppError('Failed to deliver verification code. Please check your details and try again.', 500)
+  }
+
+  const deliveryMethod = emailSent && smsSent 
+    ? 'email and SMS' 
+    : emailSent ? 'email' : 'SMS'
+
+  return { 
+    message: `Verification code sent via ${deliveryMethod}`, 
+    participantName: participant.displayName 
+  }
 }
 
 export async function castVote(input: CastVoteInput) {
@@ -333,7 +353,7 @@ async function detectFraud(
   }
 }
 
-function normalizePhone(phone: string): string {
+export function normalizePhone(phone: string): string {
   const cleaned = phone.replace(/\s+/g, '').replace(/-/g, '')
   if (cleaned.startsWith('+')) return cleaned
   if (cleaned.startsWith('0')) return `+234${cleaned.slice(1)}`
@@ -341,7 +361,7 @@ function normalizePhone(phone: string): string {
   return `+234${cleaned}`
 }
 
-function getTodayDate(): Date {
+export function getTodayDate(): Date {
   const now = new Date()
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 }

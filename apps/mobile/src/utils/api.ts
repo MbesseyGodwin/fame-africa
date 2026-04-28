@@ -140,9 +140,9 @@ export const votingApi = {
 
 // ── Leaderboard ───────────────────────────────────────────────
 export const leaderboardApi = {
-  getCurrent: (cycleId?: string) => api.get('/leaderboard/current', { params: { cycleId } }),
-  getDailyChart: (cycleId?: string) => api.get('/leaderboard/daily-chart', { params: { cycleId } }),
-  getHistorical: (cycleId: string, page?: number) => api.get('/leaderboard/historical', { params: { cycleId, page } }),
+  getCurrent: (cycleId?: string, page?: number) => api.get('/leaderboard', { params: { cycleId, page } }),
+  getDailyChart: (cycleId?: string) => api.get('/leaderboard/daily', { params: { cycleId } }),
+  getHistorical: (cycleId: string, page?: number) => api.get('/leaderboard', { params: { cycleId, page } }),
 }
 
 // ── Eliminations ──────────────────────────────────────────────
