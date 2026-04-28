@@ -5,13 +5,19 @@ import { useQuery } from '@tanstack/react-query'
 import { adminApi, competitionsApi } from '../../../lib/api'
 
 export default function AdminEliminationsPage() {
-  const { data: cycleData } = useQuery({ queryKey: ['admin_cycle'], queryFn: () => competitionsApi.getCurrent() })
-  const cycleId = cycleData?.data?.data?.id
+  const { data: cycleData } = useQuery({
+    queryKey: ['admin_cycle'],
+    queryFn: async () => {
+      const res = await competitionsApi.getCurrent()
+      return res.data?.data
+    }
+  })
+  const cycleId = cycleData?.id
 
-  const { data, isLoading } = useQuery({
+  const { data: history, isLoading } = useQuery({
     queryKey: ['admin_eliminations_history', cycleId],
     queryFn: async () => {
-      const res = await adminApi.getEliminations(cycleId)
+      const res = await adminApi.getEliminations(cycleId as string)
       return res.data?.data || []
     },
     enabled: !!cycleId
@@ -20,7 +26,7 @@ export default function AdminEliminationsPage() {
   // The active "queue" and "settings" belong on the /admin overview page!
   // This page is a dedicated ledger for *historical* eliminations inside the current cycle.
 
-  const history = data || []
+  const eliminations = history || []
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
@@ -46,9 +52,9 @@ export default function AdminEliminationsPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-400">Loading history...</td></tr>
-              ) : history.length === 0 ? (
+              ) : eliminations.length === 0 ? (
                 <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-400">No participants have been eliminated yet.</td></tr>
-              ) : history.map((e: any) => (
+              ) : eliminations.map((e: any) => (
                 <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">{e.participant?.displayName || 'Unknown'}</td>
                   <td className="px-6 py-4 text-gray-500">{new Date(e.createdAt).toLocaleString()}</td>

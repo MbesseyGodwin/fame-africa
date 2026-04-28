@@ -446,6 +446,7 @@ model Battle {
   endTime           DateTime  @map("end_time")
   winnerId          String?   @map("winner_id")
   
+  status            BattleStatus @default(UPCOMING)
   votesA            Int       @default(0) @map("votes_a")
   votesB            Int       @default(0) @map("votes_b")
   
@@ -463,13 +464,14 @@ model BattleVote {
   id              String      @id @default(cuid())
   battleId        String      @map("battle_id")
   participantId   String      @map("participant_id")
-  voterPhone      String      @map("voter_phone")
+  voterEmail      String      @map("voter_email")
+  voterPhone      String?     @map("voter_phone")
   createdAt       DateTime    @default(now()) @map("created_at")
 
   battle          Battle      @relation(fields: [battleId], references: [id])
   participant     Participant @relation(fields: [participantId], references: [id])
 
-  @@unique([battleId, voterPhone])
+  @@unique([battleId, voterEmail])
   @@map("battle_votes")
 }
 
@@ -1053,4 +1055,10 @@ model Report {
   reporter          User         @relation(name: "ReportsMade", fields: [reporterId], references: [id])
 
   @@map("reports")
+}
+
+enum BattleStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
 }

@@ -264,3 +264,16 @@ export const adminBroadcastApi = {
   sendBroadcast: (data: any) => api.post('/admin/notifications/broadcast', data),
   cancelBroadcast: (id: string) => api.delete(`/admin/notifications/broadcasts/${id}`),
 }
+
+// ── Payments ──────────────────────────────────────────────────
+export const paymentsApi = {
+  getPackages: () => api.get('/payments/mega-vote-packages'),
+  initializeMegaVote: (data: { 
+    participantId: string, 
+    amount: number, 
+    currency: string, 
+    reference: string, 
+    voteCount: number 
+  }) => api.post('/payments/mega-vote/initialize', data),
+  verifyPayment: (data: { transactionId: string, reference: string }) => api.post('/payments/verify', data),
+}

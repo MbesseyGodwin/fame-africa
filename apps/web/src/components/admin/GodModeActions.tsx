@@ -148,9 +148,14 @@ export function GodModeActions({ participant }: GodModeActionsProps) {
               <button
                 onClick={handleAction}
                 disabled={adjustVotesMutation.isPending || strikeMutation.isPending || statusMutation.isPending}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200 dark:shadow-none flex items-center justify-center gap-2"
               >
-                {adjustVotesMutation.isPending || strikeMutation.isPending || statusMutation.isPending ? 'Processing...' : 'Confirm Action'}
+                {(adjustVotesMutation.isPending || strikeMutation.isPending || statusMutation.isPending) ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : 'Confirm Action'}
               </button>
             </div>
           </div>

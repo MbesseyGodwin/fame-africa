@@ -8,3 +8,5 @@ export const paymentsRouter = Router()
 
 paymentsRouter.get('/mega-vote-packages', PaymentsController.getMegaVotePackages)
 paymentsRouter.post('/mega-vote/initialize', authenticate, PaymentsController.initializeMegaVote)
+paymentsRouter.post('/verify', authenticate, PaymentsController.verifyPayment)
+paymentsRouter.post('/webhook', PaymentsController.handleWebhook)

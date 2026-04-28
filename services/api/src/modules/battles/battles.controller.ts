@@ -13,11 +13,21 @@ export async function getActiveBattles(req: Request, res: Response, next: NextFu
   } catch (error) { next(error) }
 }
 
-export async function voteInBattle(req: Request, res: Response, next: NextFunction) {
+export async function requestBattleOtp(req: Request, res: Response, next: NextFunction) {
   try {
     const { battleId } = req.params
-    const { participantId, voterPhone } = req.body
-    const vote = await BattlesService.voteInBattle(battleId, participantId, voterPhone)
+    const { participantId, voterEmail, voterPhone } = req.body
+    const ip = req.ip
+    const result = await BattlesService.sendBattleVoteOtp(battleId, participantId, voterEmail, voterPhone, ip)
+    return ApiResponse.success(res, result)
+  } catch (error) { next(error) }
+}
+
+export async function castBattleVote(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { battleId } = req.params
+    const { participantId, voterEmail, otpCode, voterPhone } = req.body
+    const vote = await BattlesService.castBattleVote(battleId, participantId, voterEmail, otpCode, voterPhone)
     return ApiResponse.success(res, vote)
   } catch (error) { next(error) }
 }

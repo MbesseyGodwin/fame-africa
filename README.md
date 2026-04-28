@@ -203,3 +203,9 @@ apps/web/app: Contains the Next.js App Router pages for the public site and admi
 packages/database/prisma/schema.prisma: The "source of truth" for the entire platform's data model.
 In summary: VoteNaija is a sophisticated "Reality TV as a Service" platform built to handle the unique technical and trust challenges of large-scale public competitions in the Nigerian market.
 
+
+
+Access Credentials
+Admin Access: admin@fameafrica.ng / Admin@FameAfrica2026!
+User/Voter Password: Password123! (used for all contestants and dummy voters)
+You can now log in to the Admin Dashboard and see a fully populated environment with real-time charts, participant rankings, and transaction logs!

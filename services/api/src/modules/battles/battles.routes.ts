@@ -7,4 +7,5 @@ export const battlesRouter = Router()
 
 battlesRouter.get('/active', BattlesController.getActiveBattles)
 battlesRouter.get('/past', BattlesController.getPastBattles)
-battlesRouter.post('/:battleId/vote', BattlesController.voteInBattle)
+battlesRouter.post('/:battleId/otp', BattlesController.requestBattleOtp)
+battlesRouter.post('/:battleId/vote', BattlesController.castBattleVote)

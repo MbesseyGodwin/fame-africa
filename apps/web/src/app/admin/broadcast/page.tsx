@@ -192,7 +192,12 @@ export default function AdminBroadcastPage() {
                 disabled={broadcastMutation.isPending}
                 className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-primary/20 flex items-center gap-2 transition disabled:opacity-70"
               >
-                {broadcastMutation.isPending ? 'Processing...' : formData.scheduledAt ? 'Schedule Broadcast' : 'Send Broadcast Now'}
+                {broadcastMutation.isPending ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : formData.scheduledAt ? 'Schedule Broadcast' : 'Send Broadcast Now'}
               </button>
             </div>
           </form>

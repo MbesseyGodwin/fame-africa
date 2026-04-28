@@ -20,11 +20,28 @@ export default function SecurityScreen() {
   
   const [loading, setLoading] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
+  const [sessionsLoading, setSessionsLoading] = useState(true)
+  const [sessions, setSessions] = useState<any[]>([])
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
     confirm: '',
   })
+
+  React.useEffect(() => {
+    fetchSessions()
+  }, [])
+
+  async function fetchSessions() {
+    try {
+      const { data } = await usersApi.getSessions()
+      setSessions(data.data)
+    } catch (error) {
+      console.error('Failed to fetch sessions', error)
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
 
   async function handleUpdatePassword() {
     if (!passwords.current || !passwords.new || !passwords.confirm) {
@@ -150,25 +167,29 @@ export default function SecurityScreen() {
 
           <View style={s.section}>
             <Text style={s.sectionTitle}>Login Activity</Text>
-            <TouchableOpacity style={s.row} activeOpacity={0.7}>
-              <View style={s.iconBox}>
-                <Ionicons name="phone-portrait-outline" size={20} color={theme.primaryColor} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={s.rowTitle}>This Device</Text>
-                <Text style={s.rowSub}>Lagos, Nigeria · Active now</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={s.row} activeOpacity={0.7}>
-              <View style={s.iconBox}>
-                <Ionicons name="desktop-outline" size={20} color={textSecondary} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={s.rowTitle}>Chrome on Windows</Text>
-                <Text style={s.rowSub}>Ibadan, Nigeria · 2 days ago</Text>
-              </View>
-            </TouchableOpacity>
+            {sessionsLoading ? (
+              <ActivityIndicator color={theme.primaryColor} style={{ padding: 20 }} />
+            ) : sessions.length === 0 ? (
+              <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', padding: 10 }}>No recent login activity found.</Text>
+            ) : (
+              sessions.map((session, idx) => (
+                <View key={session.id} style={s.row}>
+                  <View style={s.iconBox}>
+                    <Ionicons 
+                      name={session.userAgent?.toLowerCase().includes('mobile') ? "phone-portrait-outline" : "desktop-outline"} 
+                      size={20} 
+                      color={idx === 0 ? theme.primaryColor : textSecondary} 
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={s.rowTitle}>{idx === 0 ? 'Current Session' : (session.userAgent || 'Unknown Device')}</Text>
+                    <Text style={s.rowSub}>
+                      {session.ipAddress || 'Unknown IP'} · {new Date(session.createdAt).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
 
           <TouchableOpacity 

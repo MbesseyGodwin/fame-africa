@@ -1,7 +1,9 @@
 // services/api/src/modules/payments/payments.service.ts
 
-import { prisma } from '../../lib/prisma'
+import { prisma } from '../../index'
 import { AppError } from '../../utils/errors'
+import { verifyFlutterwaveTransaction } from '../../utils/flutterwave'
+import { ParticipantStatus } from '@prisma/client'
 
 export class PaymentsService {
   static async getMegaVotePackages() {
@@ -33,6 +35,28 @@ export class PaymentsService {
         metadata: data.metadata
       }
     })
+  }
+
+  static async verifyTransaction(transactionId: string, expectedReference: string) {
+    const flwResponse = await verifyFlutterwaveTransaction(transactionId)
+    
+    if (flwResponse.status !== 'success') {
+      throw new AppError('Flutterwave verification failed', 400)
+    }
+
+    const { tx_ref, amount, currency, status } = flwResponse.data
+
+    if (tx_ref !== expectedReference) {
+      throw new AppError('Transaction reference mismatch', 400)
+    }
+
+    if (status !== 'successful') {
+      return { status: 'PENDING', reference: tx_ref }
+    }
+
+    // Call success handler
+    const transaction = await this.handleSuccessfulPayment(tx_ref, amount)
+    return { status: 'SUCCESS', transaction }
   }
 
   static async handleSuccessfulPayment(reference: string, providerAmount?: number) {
@@ -93,8 +117,19 @@ export class PaymentsService {
         })
       }
     } else if (transaction.type === 'REGISTRATION_FEE' && !transaction.isFulfilled) {
-       // Registration fee fulfillment logic usually in confirmPaymentAndActivate
-       // We can call it here too if needed
+       // Update participant status to PAID
+       if (transaction.participantId) {
+         await prisma.participant.update({
+           where: { id: transaction.participantId },
+           data: { status: ParticipantStatus.ACTIVE }
+         })
+         
+         // Mark as fulfilled
+         await prisma.transaction.update({
+           where: { id: transaction.id },
+           data: { isFulfilled: true }
+         })
+       }
     }
 
     return updatedTransaction

@@ -114,15 +114,27 @@ export default function AdminKycPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleAction(record.id, 'APPROVED')}
-                      className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-colors"
+                      disabled={updateStatusMutation.isPending}
+                      className="flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
-                      Approve
+                      {updateStatusMutation.isPending ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          ...
+                        </>
+                      ) : 'Approve'}
                     </button>
                     <button
                       onClick={() => handleAction(record.id, 'REJECTED')}
-                      className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors"
+                      disabled={updateStatusMutation.isPending}
+                      className="flex-1 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
-                      Reject
+                      {updateStatusMutation.isPending ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          ...
+                        </>
+                      ) : 'Reject'}
                     </button>
                   </div>
                 )}

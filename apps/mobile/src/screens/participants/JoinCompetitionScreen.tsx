@@ -5,7 +5,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, Image,
   KeyboardAvoidingView, Platform, Dimensions,
-  Modal, FlatList,
+  Modal, FlatList, Linking,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system'
@@ -77,11 +77,20 @@ export default function JoinCompetitionScreen() {
   // ── Mutation ──────────────────────────────────────────────
   const mutation = useMutation({
     mutationFn: (data: FormData) => participantsApi.register(data),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ['dashboard'] })
-      Alert.alert('Success 🎉', "You've entered! Your profile is being prepared.", [
-        { text: 'Go to Dashboard', onPress: () => router.replace('/(tabs)/profile') },
-      ])
+      const { paymentUrl } = res.data?.data || {}
+
+      if (paymentUrl) {
+        Alert.alert('Payment Required', 'To complete your registration, you need to pay the entry fee.', [
+          { text: 'Pay Now', onPress: () => Linking.openURL(paymentUrl) },
+          { text: 'Later', onPress: () => router.replace('/(tabs)/profile') },
+        ])
+      } else {
+        Alert.alert('Success 🎉', "You've entered! Your profile is being prepared.", [
+          { text: 'Go to Dashboard', onPress: () => router.replace('/(tabs)/profile') },
+        ])
+      }
     },
     onError: (error: any) => {
       Alert.alert('Registration Failed', error.response?.data?.message || 'Please try again.')

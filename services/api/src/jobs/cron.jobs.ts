@@ -130,14 +130,37 @@ async function runDailyElimination() {
   }
 
   const eliminationCountSetting = await prisma.competitionSetting.findFirst({
-    where: { cycleId: activeCycle.id, key: 'daily_elimination_count' },
+    where: { cycleId: activeCycle.id, key: 'eliminations_per_day' },
   })
   const eliminationCount = parseInt(eliminationCountSetting?.value || '1', 10)
+
+  const frequencySetting = await prisma.competitionSetting.findFirst({
+    where: { cycleId: activeCycle.id, key: 'elimination_frequency' },
+  })
+  const frequency = frequencySetting?.value || 'DAILY'
+
+  if (frequency === 'WEEKLY') {
+    const weeklyDaySetting = await prisma.competitionSetting.findFirst({
+      where: { cycleId: activeCycle.id, key: 'elimination_weekly_day' },
+    })
+    const weeklyDay = parseInt(weeklyDaySetting?.value || '0', 10) // 0 = Sunday
+    
+    const today = getTodayDate()
+    if (today.getUTCDay() !== weeklyDay) {
+      logger.info(`Weekly elimination scheduled for day ${weeklyDay}, but today is ${today.getUTCDay()}. Skipping.`)
+      return
+    }
+  }
 
   const finalistCountSetting = await prisma.competitionSetting.findFirst({
     where: { cycleId: activeCycle.id, key: 'finalist_count' },
   })
   const finalistCount = parseInt(finalistCountSetting?.value || '5', 10)
+
+  const minVotesSetting = await prisma.competitionSetting.findFirst({
+    where: { cycleId: activeCycle.id, key: 'min_votes_to_avoid_elimination' },
+  })
+  const minVotes = parseInt(minVotesSetting?.value || '0', 10)
 
   const activeParticipants = await prisma.participant.findMany({
     where: { cycleId: activeCycle.id, status: 'ACTIVE' },
@@ -182,7 +205,12 @@ async function runDailyElimination() {
     return new Date(b.participant.createdAt).getTime() - new Date(a.participant.createdAt).getTime()
   })
 
-  const toEliminate = participantsWithTallies.slice(0, eliminationCount)
+  // Only consider those who failed to meet the minimum votes threshold if set
+  const candidatesForElimination = minVotes > 0 
+    ? participantsWithTallies.filter(p => p.todayVotes < minVotes)
+    : participantsWithTallies
+
+  const toEliminate = candidatesForElimination.slice(0, eliminationCount)
 
   logger.info(`Eliminating ${toEliminate.length} participant(s) today:`)
 

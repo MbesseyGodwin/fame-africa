@@ -10,8 +10,8 @@ export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuthStore()
 
-  const [email, setEmail] = useState('admin@votenaija.ng')
-  const [password, setPassword] = useState('Admin@VoteNaija2026!')
+  const [email, setEmail] = useState('admin@fameafrica.ng')
+  const [password, setPassword] = useState('Admin@FameAfrica2026!')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 

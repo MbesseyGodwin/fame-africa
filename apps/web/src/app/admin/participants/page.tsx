@@ -119,14 +119,20 @@ export default function AdminParticipantsPage() {
                       <GodModeActions participant={p} />
                       {p.status === 'ACTIVE' && (
                         <button
+                          disabled={disqualMutation.isPending}
                           onClick={() => {
                             if (window.confirm(`Are you sure you want to DISQUALIFY ${p.displayName}? This is irreversible.`)) {
                               disqualMutation.mutate(p.id)
                             }
                           }}
-                          className="text-[10px] text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors"
+                          className="text-[10px] text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors flex items-center gap-1 disabled:opacity-50"
                         >
-                          Disqualify
+                          {disqualMutation.isPending ? (
+                            <>
+                              <div className="w-2.5 h-2.5 border border-red-200 border-t-red-600 rounded-full animate-spin" />
+                              ...
+                            </>
+                          ) : 'Disqualify'}
                         </button>
                       )}
                     </div>

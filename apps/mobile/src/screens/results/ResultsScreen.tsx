@@ -61,6 +61,14 @@ export default function ResultsScreen() {
           />
         </View>
         <Text style={s.headerSub}>Updated in real-time. Keep voting to save your favorite!</Text>
+        
+        <TouchableOpacity 
+          style={s.elimHistoryBtn}
+          onPress={() => router.push('/eliminations')}
+        >
+          <Ionicons name="skull-outline" size={16} color="#fff" />
+          <Text style={s.elimHistoryText}>View Elimination History</Text>
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -98,6 +106,22 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     },
     headerTitle: { color: '#fff', fontSize: 20, fontWeight: '600' },
     headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
+    elimHistoryBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignSelf: 'flex-start',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      marginTop: 16,
+      gap: 6,
+    },
+    elimHistoryText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '700',
+    },
     row: {
       flexDirection: 'row', alignItems: 'center',
       backgroundColor: surface,

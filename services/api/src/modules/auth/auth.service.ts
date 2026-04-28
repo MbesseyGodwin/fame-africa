@@ -115,7 +115,20 @@ export async function loginUser(email: string, password: string, ip: string) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { preferences: true },
+    include: { 
+      preferences: true,
+      participant: {
+        include: {
+          cycle: {
+            select: {
+              id: true,
+              cycleName: true,
+              status: true
+            }
+          }
+        }
+      }
+    },
   })
 
   if (!user) {
@@ -184,8 +197,15 @@ export async function loginUser(email: string, password: string, ip: string) {
   const tokens = generateTokens(updatedUser.id, updatedUser.role, updatedUser.tokenVersion)
   logger.info('[AuthService.loginUser] login successful', { userId: user.id, email, role: user.role })
 
-  const { passwordHash, ...safeUser } = user
-  return { user: safeUser, ...tokens }
+  const { passwordHash, ...safeUser } = user as any
+  return { 
+    user: {
+      ...safeUser,
+      lastLoginAt: updatedUser.lastLoginAt,
+      tokenVersion: updatedUser.tokenVersion
+    }, 
+    ...tokens 
+  }
 }
 
 export async function sendOtp(input: OtpInput) {

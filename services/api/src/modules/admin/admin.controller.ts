@@ -267,7 +267,7 @@ export async function getEliminations(req: Request, res: Response, next: NextFun
     const { cycleId } = req.query as { cycleId: string }
     const eliminations = await prisma.elimination.findMany({
       where: { ...(cycleId && { cycleId }) },
-      include: { participant: { select: { displayName: true, photoUrl: true, voteLinkSlug: true } } },
+      include: { participant: { select: { displayName: true, photoUrl: true, voteLinkSlug: true, totalVotes: true } } },
       orderBy: { eliminationDate: 'desc' },
     })
     return ApiResponse.success(res, eliminations)
@@ -281,7 +281,7 @@ export async function getEliminationQueue(req: Request, res: Response, next: Nex
     today.setUTCHours(0, 0, 0, 0)
 
     const setting = await prisma.competitionSetting.findFirst({
-      where: { cycleId, key: 'daily_elimination_count' },
+      where: { cycleId, key: 'eliminations_per_day' },
     })
     const count = parseInt(setting?.value || '1', 10)
 

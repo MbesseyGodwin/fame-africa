@@ -232,6 +232,29 @@ usersRouter.put('/me/phone', authenticate,
   }
 )
 
+// ── Session History (Login Activity) ──────────────────────────
+usersRouter.get('/me/sessions', authenticate, async (req: any, res: any, next: any) => {
+  try {
+    const userId = req.user.id
+    const sessions = await prisma.auditLog.findMany({
+      where: {
+        userId,
+        action: 'LOGIN',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        ipAddress: true,
+        userAgent: true,
+        createdAt: true,
+      }
+    })
+
+    return ApiResponse.success(res, sessions)
+  } catch (error) { next(error) }
+})
+
 // ── Activity History ──────────────────────────────────────────
 usersRouter.get('/me/activity', authenticate, async (req: any, res: any, next: any) => {
   try {

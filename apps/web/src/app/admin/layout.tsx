@@ -18,8 +18,10 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname()
   const [time, setTime] = React.useState(new Date())
+  const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
+    setMounted(true)
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
@@ -39,7 +41,7 @@ export default function AdminLayout({
           <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-white/5 rounded-full border border-gray-200 dark:border-white/5">
             <Clock className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-[12px] font-mono font-bold text-gray-700 dark:text-gray-300">
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+              {mounted && time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             </span>
           </div>
 

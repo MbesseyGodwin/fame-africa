@@ -2,6 +2,8 @@
 
 import { prisma } from '../../lib/prisma'
 import { AppError } from '../../utils/errors'
+import * as bcrypt from 'bcryptjs'
+import { emailTransporter } from '../../utils/emailTransporter'
 
 export class BattlesService {
   static async getActiveBattles(cycleId: string) {
@@ -23,7 +25,7 @@ export class BattlesService {
     })
   }
 
-  static async voteInBattle(battleId: string, participantId: string, voterPhone: string) {
+  static async sendBattleVoteOtp(battleId: string, participantId: string, voterEmail: string, voterPhone?: string, ip?: string) {
     const battle = await prisma.battle.findUnique({ where: { id: battleId } })
     if (!battle) throw new AppError('Battle not found', 404)
     
@@ -36,20 +38,104 @@ export class BattlesService {
       throw new AppError('Participant not in this battle', 400)
     }
 
-    // Check for daily vote limit in this battle (optional, but good for fairness)
+    const normalizedEmail = voterEmail.toLowerCase().trim()
+    const today = new Date(new Date().setHours(0,0,0,0))
+
+    // Check for daily vote limit
     const existing = await prisma.battleVote.findFirst({
       where: {
         battleId,
-        voterPhone,
-        createdAt: { gte: new Date(new Date().setHours(0,0,0,0)) }
+        voterEmail: normalizedEmail,
+        createdAt: { gte: today }
       }
     })
+    if (existing) throw new AppError('You have already voted in this battle today', 400)
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
+    const expiry = new Date(Date.now() + 5 * 60 * 1000) // 5 mins
+
+    await prisma.otpToken.create({
+      data: {
+        email: normalizedEmail,
+        phone: voterPhone || null,
+        otpCode: await bcrypt.hash(otpCode, 10),
+        purpose: 'battle_vote',
+        participantId,
+        cycleId: battle.cycleId,
+        expiresAt: expiry,
+        ipAddress: ip || null
+      }
+    })
+
+    // Send Email
+    await emailTransporter.sendMail({
+      to: normalizedEmail,
+      subject: `Battle Verification Code: ${otpCode}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #FF4081;">Battle Verification</h2>
+          <p>Your verification code for the FameAfrica Battle is:</p>
+          <div style="background: #f9f9f9; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #FF4081; border-radius: 5px; margin: 20px 0;">
+            ${otpCode}
+          </div>
+          <p>This code expires in 5 minutes. Use it to confirm your vote!</p>
+        </div>
+      `
+    }).catch(err => {
+      console.error('Failed to send battle OTP email', err)
+      throw new AppError('Failed to send verification email. Please try again.', 500)
+    })
+
+    return { message: 'Verification code sent to your email' }
+  }
+
+  static async castBattleVote(battleId: string, participantId: string, voterEmail: string, otpCode: string, voterPhone?: string) {
+    const battle = await prisma.battle.findUnique({ where: { id: battleId } })
+    if (!battle) throw new AppError('Battle not found', 404)
     
+    const now = new Date()
+    if (now < battle.startTime || now > battle.endTime) {
+      throw new AppError('Battle is not active', 400)
+    }
+
+    const normalizedEmail = voterEmail.toLowerCase().trim()
+
+    // Verify OTP
+    const token = await prisma.otpToken.findFirst({
+      where: {
+        email: normalizedEmail,
+        purpose: 'battle_vote',
+        expiresAt: { gte: now },
+        usedAt: null
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (!token) throw new AppError('Invalid or expired verification code', 400)
+
+    const valid = await bcrypt.compare(otpCode, token.otpCode)
+    if (!valid) throw new AppError('Invalid verification code', 400)
+
+    // Final check for double voting (to be safe)
+    const today = new Date(new Date().setHours(0,0,0,0))
+    const existing = await prisma.battleVote.findFirst({
+      where: { battleId, voterEmail: normalizedEmail, createdAt: { gte: today } }
+    })
     if (existing) throw new AppError('You have already voted in this battle today', 400)
 
     return prisma.$transaction(async (tx) => {
       const vote = await tx.battleVote.create({
-        data: { battleId, participantId, voterPhone }
+        data: { 
+          battleId, 
+          participantId, 
+          voterEmail: normalizedEmail, 
+          voterPhone: voterPhone || null 
+        }
+      })
+
+      await tx.otpToken.update({
+        where: { id: token.id },
+        data: { usedAt: new Date() }
       })
 
       if (participantId === battle.participantAId) {

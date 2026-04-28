@@ -54,9 +54,11 @@ export async function registerForPushNotificationsAsync() {
       await notificationsApi.registerPushToken(token)
     } catch (e: any) {
       if (e.message?.includes('FirebaseApp is not initialized')) {
-        console.warn('[Notifications] Push token fetch skipped: Firebase not initialized. (Normal for development without google-services.json)')
+        console.warn('[Notifications] 🚨 Push token fetch skipped: Firebase is not initialized.')
+        console.warn('[Notifications] This is NORMAL in development without google-services.json / GoogleService-Info.plist.')
+        console.warn('[Notifications] For production push notifications, please add your Firebase config files to the native directories.')
       } else {
-        console.warn('[Notifications] Error fetching push token:', e.message)
+        console.error('[Notifications] ❌ Error fetching push token:', e.message)
       }
     }
   } else {

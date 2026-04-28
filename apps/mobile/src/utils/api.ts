@@ -83,6 +83,7 @@ export const usersApi = {
   updatePreferences: (data: any) => api.put('/users/me/preferences', data),
   changePassword: (data: any) => api.put('/users/me/password', data),
   updatePhone: (data: any) => api.put('/users/me/phone', data),
+  getSessions: () => api.get('/users/me/sessions'),
   getActivity: (params?: any) => api.get('/users/me/activity', { params }),
 }
 
@@ -224,7 +225,9 @@ export const moderationApi = {
 export const battlesApi = {
   getActive: (cycleId: string) => api.get('/battles/active', { params: { cycleId } }),
   getPast: (cycleId: string) => api.get('/battles/past', { params: { cycleId } }),
-  vote: (battleId: string, data: { participantId: string, voterPhone: string }) => 
+  requestOtp: (battleId: string, data: { participantId: string, voterEmail: string, voterPhone?: string }) => 
+    api.post(`/battles/${battleId}/otp`, data),
+  vote: (battleId: string, data: { participantId: string, voterEmail: string, otpCode: string, voterPhone?: string }) => 
     api.post(`/battles/${battleId}/vote`, data),
 }
 
@@ -238,4 +241,5 @@ export const paymentsApi = {
     reference: string, 
     voteCount: number 
   }) => api.post('/payments/mega-vote/initialize', data),
+  verifyPayment: (data: { transactionId: string, reference: string }) => api.post('/payments/verify', data),
 }
