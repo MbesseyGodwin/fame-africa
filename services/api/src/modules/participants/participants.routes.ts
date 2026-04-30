@@ -153,6 +153,7 @@ participantsRouter.get('/me/analytics', authenticate, ParticipantsController.get
 participantsRouter.post('/me/generate-card', authenticate, ParticipantsController.generateMyCard)
 participantsRouter.put('/me/profile', 
   authenticate, 
+  upload.single('photo') as any,
   [
     body('displayName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Display name must be 2-50 characters'),
     body('bio').optional().trim().isLength({ min: 10, max: 1000 }).withMessage('Bio must be at least 10 characters'),
@@ -168,6 +169,7 @@ participantsRouter.put('/me/profile',
   ParticipantsController.updateMyProfile
 )
 participantsRouter.get('/me/ai-advice', authenticate, ParticipantsController.getMyAiAdvice)
+participantsRouter.post('/me/ai-advice', authenticate, ParticipantsController.generateMyAiAdvice)
 
 // Video Management
 participantsRouter.post('/me/videos', authenticate, ParticipantVideosController.addVideo)

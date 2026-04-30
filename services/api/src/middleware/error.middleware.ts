@@ -8,8 +8,9 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
   logger.error(err)
 
   // Handle specific Prisma errors
-  if (err.name === 'PrismaClientInitializationError') {
-    return ApiResponse.internalError(res, 'Database connection failed. Please check if your database is running.')
+  if (err.name === 'PrismaClientInitializationError' || err.name === 'PrismaClientKnownRequestError' || err.name === 'PrismaClientUnknownRequestError') {
+    logger.error('[Database Error]', { name: err.name, code: err.code, message: err.message })
+    return ApiResponse.error(res, 'A database error occurred. Please try again later.', 503)
   }
 
   if (err instanceof AppError) {
@@ -27,8 +28,9 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
   }
 
   // Default error
-  const message = process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  const errors = process.env.NODE_ENV === 'development' ? { stack: err.stack } : undefined
+  const isDev = process.env.NODE_ENV === 'development'
+  const message = isDev ? err.message : 'Internal server error'
+  const errors = isDev ? { stack: err.stack, details: err } : undefined
   
   return ApiResponse.error(res, message, 500, errors)
 }

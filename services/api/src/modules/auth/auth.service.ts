@@ -376,8 +376,25 @@ export async function refreshAccessToken(refreshToken: string) {
     return tokens
   } catch (err: any) {
     if (err instanceof AppError) throw err
-    logger.warn('[AuthService.refreshAccessToken] invalid token', { error: err.message })
-    throw new AppError('Invalid refresh token', 401)
+    
+    // Distinguish between JWT errors and Database/Internal errors
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      logger.warn('[AuthService.refreshAccessToken] invalid or expired token', { error: err.message })
+      throw new AppError('Invalid refresh token', 401)
+    }
+
+    logger.error('[AuthService.refreshAccessToken] unexpected error', { 
+      message: err.message, 
+      stack: err.stack,
+      code: err.code 
+    })
+    
+    // If it's a database error (Prisma codes start with P)
+    if (err.code?.startsWith('P')) {
+      throw new AppError('Database connection error. Please try again later.', 503)
+    }
+
+    throw new AppError('An unexpected error occurred during token refresh', 500)
   }
 }
 

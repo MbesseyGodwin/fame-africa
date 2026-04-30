@@ -17,7 +17,6 @@ export const api = axios.create({
  */
 export const uploadApi = axios.create({
   baseURL: API_URL,
-  headers: { 'Content-Type': 'multipart/form-data' },
   timeout: 180000,
 })
 
@@ -109,7 +108,8 @@ export const participantsApi = {
   requestWithdrawal: () => api.post('/participants/me/withdraw'),
   confirmWithdrawal: (token: string) => api.post('/participants/me/withdraw/confirm', { token }),
   getAiAdvice: () => api.get('/participants/me/ai-advice'),
-  updateProfile: (data: any) => api.put('/participants/me/profile', data),
+  generateAiAdvice: () => api.post('/participants/me/ai-advice'),
+  updateProfile: (data: any) => uploadApi.put('/participants/me/profile', data),
   getDiscoveryFeed: (params?: { 
     limit?: number; 
     cursor?: string; 
@@ -243,3 +243,9 @@ export const paymentsApi = {
   }) => api.post('/payments/mega-vote/initialize', data),
   verifyPayment: (data: { transactionId: string, reference: string }) => api.post('/payments/verify', data),
 }
+
+// ── AI ────────────────────────────────────────────────────────
+export const aiApi = {
+  generateBio: (data: { name: string, draftBio?: string }) => api.post('/ai/generate-bio', data),
+}
+

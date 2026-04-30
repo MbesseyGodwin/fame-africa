@@ -102,7 +102,39 @@ export async function getGlobalSettings(req: Request, res: Response, next: NextF
 
 export async function updateGlobalSettings(req: Request, res: Response, next: NextFunction) {
   try {
-    return ApiResponse.success(res, null, 'Global settings updated')
+    const { settings } = req.body // Expects [{ key: string, value: any }]
+    const adminId = (req as any).user.id
+
+    const updated = []
+    for (const setting of settings) {
+      const existing = await prisma.competitionSetting.findFirst({
+        where: { cycleId: null, isGlobal: true, key: setting.key },
+      })
+
+      if (existing) {
+        const res = await prisma.competitionSetting.update({
+          where: { id: existing.id },
+          data: { 
+            value: String(setting.value), 
+            updatedById: adminId 
+          },
+        })
+        updated.push(res)
+      } else {
+        const res = await prisma.competitionSetting.create({
+          data: { 
+            cycleId: null, 
+            isGlobal: true, 
+            key: setting.key, 
+            value: String(setting.value), 
+            updatedById: adminId 
+          },
+        })
+        updated.push(res)
+      }
+    }
+
+    return ApiResponse.success(res, updated, 'Global settings updated')
   } catch (error) { next(error) }
 }
 

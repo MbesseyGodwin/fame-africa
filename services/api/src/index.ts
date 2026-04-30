@@ -28,6 +28,8 @@ import { streamingRouter } from './modules/streaming/streaming.routes'
 import { moderationRouter } from './modules/moderation/moderation.routes'
 import { paymentsRouter } from './modules/payments/payments.routes'
 import { battlesRouter } from './modules/battles/battles.routes'
+import { aiRouter } from './modules/ai-strategist/ai-strategist.routes'
+
 
 import { errorHandler } from './middleware/error.middleware'
 import { rateLimiter } from './middleware/rateLimiter.middleware'
@@ -104,6 +106,8 @@ app.use('/api/v1/streaming', streamingRouter)
 app.use('/api/v1/moderation', moderationRouter)
 app.use('/api/v1/payments', paymentsRouter)
 app.use('/api/v1/battles', battlesRouter)
+app.use('/api/v1/ai', aiRouter)
+
 
 // ── Swagger UI Documentation ────────────────────────────────────
 const swaggerDocumentModified = { 

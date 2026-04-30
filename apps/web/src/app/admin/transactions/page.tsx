@@ -70,10 +70,10 @@ export default function AdminTransactionsPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60">
               {isLoading ? (
                 <tr><td colSpan={6} className="text-center py-8 text-gray-500">Loading transactions...</td></tr>
-              ) : data?.length === 0 ? (
+              ) : (!data || data.length === 0) ? (
                 <tr><td colSpan={6} className="text-center py-8 text-gray-500">No transactions found.</td></tr>
               ) : (
-                data.map((tx: any) => (
+                data?.map((tx: any) => (
                   <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900 dark:text-white">{tx.user?.fullName}</div>

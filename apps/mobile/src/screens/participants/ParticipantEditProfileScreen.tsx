@@ -4,15 +4,20 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, Modal, FlatList,
-  Platform, KeyboardAvoidingView
+  Platform, KeyboardAvoidingView, Image
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { participantsApi } from '../../utils/api'
+import { participantsApi, aiApi } from '../../utils/api'
 import { useTheme } from '../../context/ThemeContext'
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import dayjs from 'dayjs'
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system'
+import { AFRICA_LOCATIONS } from '../../utils/locationData'
+
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024 // 5 MB
 
 const AFRICAN_COUNTRIES = [
   "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", "Cabo Verde", "Cameroon", "Central African Republic", "Chad", "Comoros", "Congo (Congo-Brazzaville)", "Democratic Republic of the Congo", "Djibouti", "Egypt", "Equatorial Guinea", "Eritrea", "Eswatini", "Ethiopia", "Gabon", "Gambia", "Ghana", "Guinea", "Guinea-Bissau", "Ivory Coast", "Kenya", "Lesotho", "Liberia", "Libya", "Madagascar", "Malawi", "Mali", "Mauritania", "Mauritius", "Morocco", "Mozambique", "Namibia", "Niger", "Nigeria", "Rwanda", "Sao Tome and Principe", "Senegal", "Seychelles", "Sierra Leone", "Somalia", "South Africa", "South Sudan", "Sudan", "Tanzania", "Togo", "Tunisia", "Uganda", "Zambia", "Zimbabwe"
@@ -44,8 +49,35 @@ export default function ParticipantEditProfileScreen() {
     embeddedVideoUrl: '',
   })
 
+  const [image, setImage] = useState<string | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
+  const [modalType, setModalType] = useState<'nationality' | 'state' | 'city' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const handleGenerateBio = async () => {
+    if (!form.displayName) {
+      Alert.alert('Name Required', 'Please enter your Stage/Display Name first so the AI can tailor the bio to you.')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const response = await aiApi.generateBio({
+        name: form.displayName,
+        draftBio: form.bio
+      })
+
+      if (response.data?.success) {
+        setForm(prev => ({ ...prev, bio: response.data.data }))
+      }
+    } catch (error: any) {
+      console.error('[handleGenerateBio] error:', error)
+      Alert.alert('AI Offline', 'Could not generate bio right now. Please try again later.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   useEffect(() => {
     if (participantData) {
@@ -65,7 +97,7 @@ export default function ParticipantEditProfileScreen() {
   }, [participantData])
 
   const mutation = useMutation({
-    mutationFn: (updates: any) => participantsApi.updateProfile(updates),
+    mutationFn: (updates: FormData) => participantsApi.updateProfile(updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       Alert.alert('Success', 'Profile updated successfully.')
@@ -76,13 +108,85 @@ export default function ParticipantEditProfileScreen() {
     }
   })
 
-  const filteredCountries = useMemo(() => {
-    return AFRICAN_COUNTRIES.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [searchQuery])
+  async function pickImage() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+    })
+    if (!result.canceled) {
+      const asset = result.assets[0]
+      let size = asset.fileSize
+      if (!size) {
+        try {
+          const info = await FileSystem.getInfoAsync(asset.uri)
+          if (info.exists) size = info.size
+        } catch { }
+      }
+
+      if (size && size > MAX_PHOTO_SIZE) {
+        Alert.alert('Photo Too Large', 'Please select a smaller image (under 5 MB) to ensure fast profile loading.')
+        return
+      }
+      setImage(asset.uri)
+    }
+  }
+
+  const openSelector = (type: 'nationality' | 'state' | 'city') => {
+    setModalType(type)
+    setSearchQuery('')
+    setModalVisible(true)
+  }
+
+  const getOptions = (): string[] => {
+    if (modalType === 'nationality') return AFRICA_LOCATIONS.map(c => c.name)
+    if (modalType === 'state') {
+      return AFRICA_LOCATIONS.find(c => c.name === form.nationality)?.states.map(s => s.name) ?? []
+    }
+    if (modalType === 'city') {
+      return AFRICA_LOCATIONS.find(c => c.name === form.nationality)
+        ?.states.find(s => s.name === form.state)?.cities ?? []
+    }
+    return []
+  }
+
+  const filteredOptions = getOptions().filter(o =>
+    o.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const handleSelect = (item: string) => {
+    if (modalType === 'nationality') setForm(f => ({ ...f, nationality: item, state: '', city: '' }))
+    else if (modalType === 'state') setForm(f => ({ ...f, state: item, city: '' }))
+    else if (modalType === 'city') setForm(f => ({ ...f, city: item }))
+    setModalVisible(false)
+  }
 
   const handleSave = () => {
     if (!form.displayName.trim()) return Alert.alert('Error', 'Display name is required.')
-    mutation.mutate(form)
+
+    const fd = new FormData()
+    fd.append('displayName', form.displayName)
+    fd.append('bio', form.bio)
+    fd.append('nationality', form.nationality)
+    fd.append('state', form.state)
+    fd.append('city', form.city)
+    fd.append('instagramUrl', form.instagramUrl)
+    fd.append('twitterUrl', form.twitterUrl)
+    fd.append('tiktokUrl', form.tiktokUrl)
+    fd.append('youtubeUrl', form.youtubeUrl)
+    fd.append('embeddedVideoUrl', form.embeddedVideoUrl)
+
+    if (image && !image.startsWith('http')) {
+      const name = image.split('/').pop() || 'photo.jpg'
+      fd.append('photo', {
+        uri: image,
+        name,
+        type: name.endsWith('.png') ? 'image/png' : 'image/jpeg'
+      } as any)
+    }
+
+    mutation.mutate(fd)
   }
 
   const s = makeStyles(theme, bg, surface, textPrimary, textSecondary, border, pad)
@@ -133,6 +237,27 @@ export default function ParticipantEditProfileScreen() {
             <View style={s.card}>
               <Text style={s.cardTitle}>BIO & LOCATION</Text>
 
+              {/* Profile Image */}
+              <Text style={s.label}>Profile Photo</Text>
+              <View style={s.imageUploadContainer}>
+                <TouchableOpacity style={s.imagePicker} onPress={pickImage}>
+                  {image ? (
+                    <Image source={{ uri: image }} style={s.profileImage} />
+                  ) : (
+                    <View style={s.placeholderImage}>
+                      <Ionicons name="camera" size={32} color={textSecondary} />
+                    </View>
+                  )}
+                  <View style={s.imageEditBadge}>
+                    <Ionicons name="pencil" size={14} color="#fff" />
+                  </View>
+                </TouchableOpacity>
+                <View style={s.imageHints}>
+                  <Text style={s.imageHintTitle}>Make a great first impression</Text>
+                  <Text style={s.imageHintText}>Clear solo shot, natural light. JPG/PNG max 5MB.</Text>
+                </View>
+              </View>
+
               <Text style={s.label}>Stage / Display Name</Text>
               <TextInput
                 style={s.input}
@@ -145,7 +270,7 @@ export default function ParticipantEditProfileScreen() {
               <Text style={s.label}>Nationality (Pan-African)</Text>
               <TouchableOpacity
                 style={s.selectTrigger}
-                onPress={() => setModalVisible(true)}
+                onPress={() => openSelector('nationality')}
               >
                 <Text style={[s.selectTriggerText, !form.nationality && { color: textSecondary }]}>
                   {form.nationality || "Select Country"}
@@ -156,27 +281,49 @@ export default function ParticipantEditProfileScreen() {
               <View style={s.row}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={s.label}>State / Province</Text>
-                  <TextInput
-                    style={s.input}
-                    value={form.state}
-                    onChangeText={(v) => setForm({ ...form, state: v })}
-                    placeholder="State"
-                    placeholderTextColor={textSecondary}
-                  />
+                  <TouchableOpacity
+                    style={[s.selectTrigger, !form.nationality && { opacity: 0.5 }]}
+                    onPress={() => form.nationality && openSelector('state')}
+                    disabled={!form.nationality}
+                  >
+                    <Text style={[s.selectTriggerText, !form.state && { color: textSecondary }]} numberOfLines={1}>
+                      {form.state || "State"}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color={textSecondary} />
+                  </TouchableOpacity>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.label}>City</Text>
-                  <TextInput
-                    style={s.input}
-                    value={form.city}
-                    onChangeText={(v) => setForm({ ...form, city: v })}
-                    placeholder="City"
-                    placeholderTextColor={textSecondary}
-                  />
+                  <TouchableOpacity
+                    style={[s.selectTrigger, !form.state && { opacity: 0.5 }]}
+                    onPress={() => form.state && openSelector('city')}
+                    disabled={!form.state}
+                  >
+                    <Text style={[s.selectTriggerText, !form.city && { color: textSecondary }]} numberOfLines={1}>
+                      {form.city || "City"}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color={textSecondary} />
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              <Text style={s.label}>Competition Bio</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 10 }}>
+                <Text style={[s.label, { marginBottom: 0 }]}>Competition Bio</Text>
+                <TouchableOpacity
+                  onPress={handleGenerateBio}
+                  disabled={isGenerating}
+                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.primaryColor + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}
+                >
+                  {isGenerating ? (
+                    <ActivityIndicator size="small" color={theme.primaryColor} style={{ marginRight: 4 }} />
+                  ) : (
+                    <MaterialCommunityIcons name="book-open-variant" size={14} color={theme.primaryColor} style={{ marginRight: 4 }} />
+                  )}
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: theme.primaryColor }}>
+                    {isGenerating ? 'Writing...' : 'Magic Write'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <TextInput
                 style={[s.input, s.bioInput]}
                 value={form.bio}
@@ -184,13 +331,14 @@ export default function ParticipantEditProfileScreen() {
                 placeholder="Tell your fans why they should vote for you..."
                 placeholderTextColor={textSecondary}
                 multiline
+                numberOfLines={10}
               />
             </View>
 
             {/* Social Presence Card */}
             <View style={s.card}>
               <Text style={s.cardTitle}>SOCIAL PRESENCE & FEATURED VIDEO</Text>
-              
+
               <Text style={s.label}>Featured Video Link (YouTube/TikTok/Instagram)</Text>
               <TextInput
                 style={s.input}
@@ -198,6 +346,8 @@ export default function ParticipantEditProfileScreen() {
                 onChangeText={(v) => setForm({ ...form, embeddedVideoUrl: v })}
                 placeholder="Paste the video link here to show it on your profile"
                 placeholderTextColor={textSecondary}
+                multiline
+                numberOfLines={5}
                 autoCapitalize="none"
               />
               <Text style={{ fontSize: 11, color: textSecondary, marginTop: 4, marginBottom: 16 }}>
@@ -281,19 +431,16 @@ export default function ParticipantEditProfileScreen() {
             </TouchableOpacity>
           </ScrollView>
 
-          {/* Nationality Modal */}
-          <Modal
-            visible={modalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setModalVisible(false)}
-          >
+          {/* Selector Modal */}
+          <Modal visible={modalVisible} animationType="slide" transparent>
             <View style={s.modalOverlay}>
               <View style={s.modalContent}>
                 <View style={s.modalHeader}>
-                  <Text style={s.modalTitle}>Select Nationality</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Ionicons name="close" size={24} color={textPrimary} />
+                  <Text style={s.modalTitle}>
+                    Select {modalType?.charAt(0).toUpperCase()}{modalType?.slice(1)}
+                  </Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Ionicons name="close-circle" size={26} color={textSecondary} />
                   </TouchableOpacity>
                 </View>
 
@@ -301,32 +448,45 @@ export default function ParticipantEditProfileScreen() {
                   <Ionicons name="search" size={20} color={textSecondary} />
                   <TextInput
                     style={s.searchInput}
-                    placeholder="Search countries..."
+                    placeholder={`Search ${modalType || 'options'}…`}
+                    placeholderTextColor={textSecondary}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     autoFocus
                   />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                      <Ionicons name="close-circle" size={16} color={textSecondary} />
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 <FlatList
-                  data={filteredCountries}
-                  keyExtractor={(item) => item}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={s.countryItem}
-                      onPress={() => {
-                        setForm({ ...form, nationality: item })
-                        setModalVisible(false)
-                        setSearchQuery('')
-                      }}
-                    >
-                      <Text style={[s.countryText, form.nationality === item && { color: theme.primaryColor, fontWeight: '700' }]}>
-                        {item}
-                      </Text>
-                      {form.nationality === item && <Ionicons name="checkmark" size={20} color={theme.primaryColor} />}
-                    </TouchableOpacity>
-                  )}
-                  contentContainerStyle={{ paddingBottom: 20 }}
+                  data={filteredOptions}
+                  keyExtractor={item => item}
+                  renderItem={({ item }) => {
+                    const isActive =
+                      (modalType === 'nationality' && form.nationality === item) ||
+                      (modalType === 'state' && form.state === item) ||
+                      (modalType === 'city' && form.city === item)
+                    return (
+                      <TouchableOpacity
+                        style={[s.countryItem, isActive && { backgroundColor: theme.primaryColor + '08' }]}
+                        onPress={() => handleSelect(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[s.countryText, isActive && { color: theme.primaryColor, fontWeight: '700' }]}>{item}</Text>
+                        {isActive && <Ionicons name="checkmark-circle" size={18} color={theme.primaryColor} />}
+                      </TouchableOpacity>
+                    )
+                  }}
+                  ListEmptyComponent={
+                    <View style={{ alignItems: 'center', marginTop: 40 }}>
+                      <Ionicons name="search-outline" size={40} color={textSecondary} />
+                      <Text style={{ color: textSecondary, marginTop: 10 }}>No results found</Text>
+                    </View>
+                  }
+                  keyboardShouldPersistTaps="handled"
                 />
               </View>
             </View>
@@ -368,7 +528,7 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
       borderRadius: 12, padding: 14
     },
     selectTriggerText: { fontSize: 15, color: textPrimary },
-    bioInput: { height: 120, textAlignVertical: 'top' },
+    bioInput: { height: 200, textAlignVertical: 'top' },
     row: { flexDirection: 'row' },
     socialContainer: { marginTop: 10 },
     socialRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
@@ -395,7 +555,7 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     searchInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 16, color: textPrimary },
     countryItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: border },
     countryText: { fontSize: 16, color: textPrimary },
-    
+
     infoText: { fontSize: 12, color: textSecondary, marginTop: 8, marginBottom: 16, lineHeight: 18 },
     addVideoBox: { marginBottom: 16 },
     miniInput: {
@@ -413,6 +573,15 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
       borderWidth: 1, borderColor: border
     },
     videoItemInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-    videoItemTitle: { fontSize: 13, color: textPrimary, flex: 1 }
+    videoItemTitle: { fontSize: 13, color: textPrimary, flex: 1 },
+
+    imageUploadContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, marginTop: 10 },
+    imagePicker: { width: 80, height: 80, borderRadius: 40, overflow: 'hidden', position: 'relative' },
+    profileImage: { width: '100%', height: '100%' },
+    placeholderImage: { width: '100%', height: '100%', backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: border, borderStyle: 'dashed', borderRadius: 40 },
+    imageEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: theme.primaryColor, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: surface },
+    imageHints: { flex: 1, marginLeft: 16 },
+    imageHintTitle: { fontSize: 14, fontWeight: '700', color: textPrimary, marginBottom: 4 },
+    imageHintText: { fontSize: 12, color: textSecondary, lineHeight: 16 }
   })
 }

@@ -3,7 +3,8 @@
 import React, { useState } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, RefreshControl
+  ScrollView, Alert, RefreshControl,
+  ActivityIndicator
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../context/AuthContext'
@@ -21,6 +22,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
   const [refreshing, setRefreshing] = useState(false)
   const [aiAdvice, setAiAdvice] = useState<any>(null)
+  const [usage, setUsage] = useState<any>(null)
   const [loadingAdvice, setLoadingAdvice] = useState(true)
 
   const fetchAdvice = async () => {
@@ -28,13 +30,33 @@ export default function ProfileScreen() {
       try {
         setLoadingAdvice(true)
         const res = await participantsApi.getAiAdvice()
-        setAiAdvice(res.data.data)
+        const data = res.data.data
+        if (data) {
+          setAiAdvice(data.advice)
+          setUsage(data.usage)
+        }
       } catch (err) {
         setAiAdvice(null)
       } finally {
         setLoadingAdvice(false)
       }
     } else {
+      setLoadingAdvice(false)
+    }
+  }
+
+  const handleGenerateAdvice = async () => {
+    try {
+      setLoadingAdvice(true)
+      const res = await participantsApi.generateAiAdvice()
+      const data = res.data.data
+      setAiAdvice(data.advice)
+      setUsage(data.usage)
+      Alert.alert('✨ New Strategy Generated', 'Your new campaign plan is ready! We also sent a copy to your email.')
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to generate advice. Try again later.'
+      Alert.alert('Limit Reached', msg)
+    } finally {
       setLoadingAdvice(false)
     }
   }
@@ -113,28 +135,104 @@ export default function ProfileScreen() {
       {user?.role === 'PARTICIPANT' && (
         <View style={[s.section, { backgroundColor: '#EEEDFE', borderColor: '#D3D0FB' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8 }}>
-            <Text style={{ fontSize: 18, marginRight: 8 }}>✨</Text>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.primaryColor }}>AI Campaign Strategist</Text>
+            {/* <Text style={{ fontSize: 18, marginRight: 8 }}>✨</Text> */}
+            <Text style={{ fontSize: 14, fontWeight: '700', color: theme.primaryColor, letterSpacing: 0.5 }}>AI STRATEGIC BRIEFING</Text>
+            {aiAdvice && (
+              <View style={{ marginLeft: 'auto', backgroundColor: theme.primaryColor, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ fontSize: 8, color: '#fff', fontWeight: '800' }}>LATEST</Text>
+              </View>
+            )}
           </View>
           <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
             {loadingAdvice ? (
-              <Text style={{ fontSize: 13, color: '#5C54A4', textAlign: 'center', marginVertical: 8 }}>
-                Analyzing your daily trends...
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <ActivityIndicator size="small" color={theme.primaryColor} />
+                <Text style={{ fontSize: 13, color: '#5C54A4' }}>
+                  Analyzing your daily trends, please wait...
+                </Text>
+              </View>
             ) : aiAdvice ? (
               <>
-                <Text style={{ fontSize: 13, color: '#3A3385', lineHeight: 20 }}>
+                {aiAdvice.createdAt && (
+                  <Text style={{ fontSize: 11, color: '#8E86DA', marginBottom: 12, fontWeight: '500' }}>
+                    Generated: {new Date(aiAdvice.createdAt).toLocaleDateString()} at {new Date(aiAdvice.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                )}
+                
+                <Text style={{ fontSize: 13, color: '#3A3385', lineHeight: 22 }}>
                   {aiAdvice.adviceText}
                 </Text>
-                <View style={{ marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderColor: '#D3D0FB', flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: 10, color: '#5C54A4', textTransform: 'uppercase', fontWeight: '600' }}>Tone: {aiAdvice.tone}</Text>
-                  <Text style={{ fontSize: 10, color: '#5C54A4', textTransform: 'uppercase', fontWeight: '600' }}>Generated Today</Text>
+
+                <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderColor: '#D3D0FB', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontSize: 10, color: '#5C54A4', textTransform: 'uppercase', fontWeight: '700', letterSpacing: 0.5 }}>Analysis Mode: {aiAdvice.tone}</Text>
+                    <Text style={{ fontSize: 9, color: '#8E86DA', marginTop: 2 }}>Next reset at 00:00 UTC</Text>
+                  </View>
+                  {usage && (
+                    <View style={{ backgroundColor: '#D3D0FB', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+                      <Text style={{ fontSize: 10, color: '#3A3385', fontWeight: '800' }}>
+                        {usage.attemptsToday}/{usage.dailyLimit} REQUESTS
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleGenerateAdvice}
+                  disabled={usage?.remaining === 0}
+                  style={{
+                    marginTop: 16,
+                    backgroundColor: usage?.remaining === 0 ? '#C0BBEB' : theme.primaryColor,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>
+                    {usage?.remaining === 0 ? 'Daily Limit Reached' : 'Get New Strategy'}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={{ marginTop: 16, backgroundColor: 'rgba(255,255,255,0.5)', padding: 12, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#3A3385', marginBottom: 4 }}>How it works:</Text>
+                  <Text style={{ fontSize: 10, color: '#5C54A4', lineHeight: 15 }}>
+                    Our AI analyzes your current rank, vote trends, and days remaining to build a custom mobilization plan. Check back often for fresh insights!
+                  </Text>
                 </View>
               </>
             ) : (
-              <Text style={{ fontSize: 13, color: '#5C54A4', textAlign: 'center', marginVertical: 8, opacity: 0.7 }}>
-                No campaign advice for today. Keep pushing for votes!
-              </Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: '#5C54A4', textAlign: 'center', marginVertical: 8, opacity: 0.7 }}>
+                  No campaign advice generated yet. Let the AI help you win!
+                </Text>
+                <TouchableOpacity
+                  onPress={handleGenerateAdvice}
+                  style={{
+                    marginTop: 8,
+                    backgroundColor: theme.primaryColor,
+                    paddingHorizontal: 20,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center'
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="rocket" size={16} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Start Strategy Session</Text>
+                </TouchableOpacity>
+
+                <View style={{ marginTop: 16, width: '100%', backgroundColor: 'rgba(255,255,255,0.5)', padding: 12, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#3A3385', marginBottom: 4 }}>How it works:</Text>
+                  <Text style={{ fontSize: 10, color: '#5C54A4', lineHeight: 15 }}>
+                    Our AI analyzes your current rank, vote trends, and days remaining to build a custom mobilization plan.
+                  </Text>
+                </View>
+              </View>
             )}
           </View>
         </View>

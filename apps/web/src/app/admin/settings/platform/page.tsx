@@ -22,7 +22,12 @@ export default function AdminSettingsPlatform() {
     require_email_verification: 'false',
     enable_sms_notifications: 'true',
     enable_email_notifications: 'true',
-    tiebreaker_rule: 'LOWEST_CUMULATIVE_VOTES'
+    tiebreaker_rule: 'LOWEST_CUMULATIVE_VOTES',
+    ai_bio_daily_limit: '2',
+    ai_bio_max_words: '80',
+    ai_agent_enabled: 'true',
+    ai_strategy_daily_limit: '2',
+    ai_strategy_max_words: '250'
   })
 
   const { data } = useQuery({
@@ -37,7 +42,7 @@ export default function AdminSettingsPlatform() {
   useEffect(() => {
     if (data) {
       // Seed if they exist
-      const getValue = (key: string) => data.find((s: any) => s.settingKey === key)?.settingValue
+      const getValue = (key: string) => data.find((s: any) => s.key === key)?.value
       
       setFlags(prev => ({
         maintenance_mode: getValue('maintenance_mode') || prev.maintenance_mode,
@@ -52,6 +57,11 @@ export default function AdminSettingsPlatform() {
         enable_sms_notifications: getValue('enable_sms_notifications') || prev.enable_sms_notifications,
         enable_email_notifications: getValue('enable_email_notifications') || prev.enable_email_notifications,
         tiebreaker_rule: getValue('tiebreaker_rule') || prev.tiebreaker_rule,
+        ai_bio_daily_limit: getValue('ai_bio_daily_limit') || prev.ai_bio_daily_limit,
+        ai_bio_max_words: getValue('ai_bio_max_words') || prev.ai_bio_max_words,
+        ai_agent_enabled: getValue('ai_agent_enabled') || prev.ai_agent_enabled,
+        ai_strategy_daily_limit: getValue('ai_strategy_daily_limit') || prev.ai_strategy_daily_limit,
+        ai_strategy_max_words: getValue('ai_strategy_max_words') || prev.ai_strategy_max_words,
       }))
     }
   }, [data])
@@ -115,6 +125,22 @@ export default function AdminSettingsPlatform() {
               <option value="LATEST_REGISTRATION">Latest Registration Date</option>
               <option value="RANDOM">Random (Coin Flip)</option>
             </select>
+          </div>
+        </div>
+
+        {/* AI Agent Configuration */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-100 dark:border-gray-800 pb-2 flex items-center gap-2">
+            AI Agent Management
+            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">New</span>
+          </h2>
+          <Toggle label="Enable AI Magic Write" desc="Globally turn on/off the AI bio generation for participants." field="ai_agent_enabled" />
+          <NumberInput label="Bio Generation Limit" desc="Number of times a participant can use Magic Write per day." field="ai_bio_daily_limit" />
+          <NumberInput label="Maximum Bio Word Count" desc="Strict word limit for the AI-generated PR content." field="ai_bio_max_words" />
+          
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
+            <NumberInput label="Strategic Advice Limit" desc="Number of times a participant can request AI Campaign Strategy advice per day." field="ai_strategy_daily_limit" />
+            <NumberInput label="Maximum Strategy Word Count" desc="Strict word limit for the AI-generated Strategic briefings." field="ai_strategy_max_words" />
           </div>
         </div>
 

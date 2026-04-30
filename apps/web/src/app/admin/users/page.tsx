@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
           >
             <option value="">All Roles</option>
             <option value="VOTER">VOTER</option>
-            <option value="CONTESTANT">CONTESTANT</option>
+            <option value="PARTICIPANT">PARTICIPANT</option>
             <option value="ADMIN">ADMIN</option>
             <option value="SUPER_ADMIN">SUPER ADMIN</option>
           </select>
@@ -131,12 +131,12 @@ export default function AdminUsersPage() {
                         className={`text-xs font-semibold px-2 py-1 rounded border-0 outline-none
                           ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : ''}
                           ${user.role === 'VOTER' ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' : ''}
-                          ${user.role === 'CONTESTANT' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
+                          ${user.role === 'PARTICIPANT' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
                           ${user.role === 'SUPER_ADMIN' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
                         `}
                       >
                         <option value="VOTER">VOTER</option>
-                        <option value="CONTESTANT">CONTESTANT</option>
+                        <option value="PARTICIPANT">PARTICIPANT</option>
                         <option value="ADMIN">ADMIN</option>
                         {user.role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">SUPER ADMIN</option>}
                       </select>

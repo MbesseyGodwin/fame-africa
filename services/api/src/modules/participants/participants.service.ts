@@ -10,6 +10,8 @@ import { getTemporaryLink } from '../../utils/dropboxUploader'
 import * as StansService from '../stans/stans.service'
 import { normalizePhone, getTodayDate } from '../voting/voting.service'
 import { hashValue } from '../../utils/crypto'
+import * as AiProvider from '../../utils/ai-provider'
+import * as CompetitionService from '../competitions/competitions.service'
 
 
 interface RegisterInput {
@@ -459,7 +461,11 @@ export async function confirmPaymentAndActivate(participantId: string, paymentRe
   }
 }
 
-export async function updateParticipantProfile(userId: string, data: Partial<RegisterInput & { nationality: string, instagramUrl: string, twitterUrl: string, tiktokUrl: string, youtubeUrl: string }>) {
+export async function updateParticipantProfile(
+  userId: string, 
+  data: Partial<RegisterInput & { nationality: string, instagramUrl: string, twitterUrl: string, tiktokUrl: string, youtubeUrl: string }>,
+  file?: any
+) {
   const participant = await prisma.participant.findFirst({ where: { userId } })
   if (!participant) throw new AppError('Participant record not found', 404)
 
@@ -475,6 +481,11 @@ export async function updateParticipantProfile(userId: string, data: Partial<Reg
       updateData[key] = (data as any)[key]
     }
   })
+
+  // Handle Photo Upload if present
+  if (file) {
+    updateData.photoUrl = file.path || file.location // Depends on storage provider
+  }
 
   if (Object.keys(updateData).length === 0) {
     throw new AppError('No valid fields provided for update', 400)
@@ -754,7 +765,146 @@ export async function getAiAdvice(userId: string) {
     orderBy: { createdAt: 'desc' },
   })
 
-  return advice
+  const dailyLimit = await CompetitionService.getCycleSettingTyped(participant.cycleId, 'ai_strategy_daily_limit', 2)
+  const attemptsToday = await prisma.auditLog.count({
+    where: {
+      userId,
+      action: 'GENERATE_AI_ADVICE',
+      createdAt: { gte: getTodayDate() }
+    }
+  })
+
+  return { 
+    advice, 
+    usage: {
+      attemptsToday,
+      dailyLimit,
+      remaining: Math.max(0, dailyLimit - attemptsToday)
+    }
+  }
+}
+
+export async function generateMyAiAdvice(userId: string) {
+  const participant = await prisma.participant.findFirst({
+    where: { userId },
+    include: { cycle: true, user: { select: { email: true, fullName: true } } }
+  }) as any
+
+  if (!participant) throw new AppError('Participant record not found', 404)
+  const cycleId = participant.cycleId
+
+  // 1. Check Usage Limit (Manageable by Super Admin)
+  const dailyLimit = await CompetitionService.getCycleSettingTyped(cycleId, 'ai_strategy_daily_limit', 2)
+  const startOfDay = getTodayDate()
+
+  const attemptsToday = await prisma.auditLog.count({
+    where: {
+      userId,
+      action: 'GENERATE_AI_ADVICE',
+      createdAt: { gte: startOfDay }
+    }
+  })
+
+  if (attemptsToday >= dailyLimit) {
+    throw new AppError(`Daily advice limit reached (${dailyLimit}). Come back tomorrow!`, 403)
+  }
+
+  // 2. Gather Real-time Stats for AI
+  const today = getTodayDate()
+  const todayTally = await prisma.dailyVoteTally.findFirst({
+    where: { participantId: participant.id, voteDate: today }
+  })
+
+  const rankResult = await prisma.$queryRaw<{ rank: bigint }[]>`
+    SELECT COUNT(*) + 1 as rank
+    FROM participants p2
+    WHERE p2.cycle_id = ${cycleId}
+      AND p2.status = 'ACTIVE'
+      AND p2.total_votes > ${participant.totalVotes}
+  `
+  const currentRank = Number(rankResult[0]?.rank ?? 0)
+  const daysRemaining = Math.max(0, Math.ceil((participant.cycle.votingClose.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+
+  // 3. Trigger Waterfall AI
+  const maxWords = await CompetitionService.getCycleSettingTyped(cycleId, 'ai_strategy_max_words', 250)
+  logger.info(`[AI Strategist] Generating advice for ${participant.displayName} (Rank #${currentRank}, MaxWords: ${maxWords})`)
+  
+  const adviceText = await AiProvider.getAiAdvice({
+    participantName: participant.displayName,
+    cycleName: participant.cycle.cycleName,
+    totalVotes: participant.totalVotes,
+    todayVotes: todayTally?.voteCount ?? 0,
+    yesterdayVotes: 0, 
+    averageVotes: currentRank,
+    daysRemaining,
+    tone: 'manager',
+    maxWords: Number(maxWords)
+  })
+
+  // 4. Save to Database
+  const advice = await prisma.aiAdvice.create({
+    data: {
+      participantId: participant.id,
+      cycleId,
+      adviceText,
+      tone: 'manager',
+      analysisData: {
+        rank: currentRank,
+        totalVotes: participant.totalVotes,
+        todayVotes: todayTally?.voteCount ?? 0,
+        daysRemaining
+      }
+    }
+  })
+
+  // 5. Log Audit Action
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'GENERATE_AI_ADVICE',
+      entityType: 'AiAdvice',
+      entityId: advice.id,
+      ipAddress: 'System',
+      userAgent: 'Mobile App'
+    }
+  })
+
+  // 6. Send Email to Participant
+  const recipientName = participant.user.fullName || participant.displayName
+  emailTransporter.sendMail({
+    to: { email: participant.user.email, name: recipientName },
+    subject: `✨ Your Strategy: How to win FameAfrica today`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #333;">Hello ${recipientName},</h2>
+        <p>Your AI Campaign Strategist has analyzed your performance and generated a custom plan for you.</p>
+        
+        <div style="background: #f4f7ff; padding: 20px; border-radius: 8px; border-left: 5px solid #4a90e2; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #4a90e2;">Today's Strategic Advice:</h3>
+          <p style="font-size: 16px; line-height: 1.6; color: #444;">"${adviceText}"</p>
+        </div>
+
+        <div style="margin-top: 20px; padding: 15px; background: #fafafa; border-radius: 5px;">
+          <p style="margin: 5px 0;"><strong>Current Rank:</strong> #${currentRank}</p>
+          <p style="margin: 5px 0;"><strong>Total Votes:</strong> ${participant.totalVotes.toLocaleString()}</p>
+          <p style="margin: 5px 0;"><strong>Days Remaining:</strong> ${daysRemaining} days</p>
+        </div>
+
+        <p style="margin-top: 30px; font-size: 14px; color: #888;">Keep pushing! Every vote counts towards your path to fame.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 12px; color: #aaa; text-align: center;">© ${new Date().getFullYear()} FameAfrica Platform</p>
+      </div>
+    `
+  }).catch(err => logger.error('[Advice Email] Failed to send:', err))
+
+  return {
+    advice,
+    usage: {
+      attemptsToday: attemptsToday + 1,
+      dailyLimit,
+      remaining: Math.max(0, dailyLimit - (attemptsToday + 1))
+    }
+  }
 }
 
 /**

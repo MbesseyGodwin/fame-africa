@@ -104,7 +104,7 @@ export async function generateMyCard(req: Request, res: Response, next: NextFunc
 export async function updateMyProfile(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = (req as any).user.id
-    const updated = await ParticipantsService.updateParticipantProfile(userId, req.body)
+    const updated = await ParticipantsService.updateParticipantProfile(userId, req.body, req.file)
     return ApiResponse.success(res, updated, 'Profile updated successfully')
   } catch (error) { next(error) }
 }
@@ -164,5 +164,13 @@ export async function getMyAiAdvice(req: Request, res: Response, next: NextFunct
     const userId = (req as any).user.id
     const advice = await ParticipantsService.getAiAdvice(userId)
     return ApiResponse.success(res, advice)
+  } catch (error) { next(error) }
+}
+
+export async function generateMyAiAdvice(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).user.id
+    const advice = await ParticipantsService.generateMyAiAdvice(userId)
+    return ApiResponse.success(res, advice, 'New campaign advice generated!')
   } catch (error) { next(error) }
 }
