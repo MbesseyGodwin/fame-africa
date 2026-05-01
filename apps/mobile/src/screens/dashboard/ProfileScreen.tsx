@@ -21,56 +21,17 @@ export default function ProfileScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const [refreshing, setRefreshing] = useState(false)
-  const [aiAdvice, setAiAdvice] = useState<any>(null)
-  const [usage, setUsage] = useState<any>(null)
-  const [loadingAdvice, setLoadingAdvice] = useState(true)
-
-  const fetchAdvice = async () => {
-    if (user?.role === 'PARTICIPANT') {
-      try {
-        setLoadingAdvice(true)
-        const res = await participantsApi.getAiAdvice()
-        const data = res.data.data
-        if (data) {
-          setAiAdvice(data.advice)
-          setUsage(data.usage)
-        }
-      } catch (err) {
-        setAiAdvice(null)
-      } finally {
-        setLoadingAdvice(false)
-      }
-    } else {
-      setLoadingAdvice(false)
-    }
-  }
-
-  const handleGenerateAdvice = async () => {
-    try {
-      setLoadingAdvice(true)
-      const res = await participantsApi.generateAiAdvice()
-      const data = res.data.data
-      setAiAdvice(data.advice)
-      setUsage(data.usage)
-      Alert.alert('✨ New Strategy Generated', 'Your new campaign plan is ready! We also sent a copy to your email.')
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to generate advice. Try again later.'
-      Alert.alert('Limit Reached', msg)
-    } finally {
-      setLoadingAdvice(false)
-    }
-  }
-
   React.useEffect(() => {
-    if (isAuthenticated) fetchAdvice()
-  }, [isAuthenticated, user])
+    if (isAuthenticated && refreshUser) {
+      // Just re-fetching user profile if needed
+    }
+  }, [isAuthenticated])
 
   const handleRefresh = async () => {
     setRefreshing(true)
     if (refreshUser) {
       await refreshUser()
     }
-    await fetchAdvice()
     setRefreshing(false)
   }
 
@@ -132,111 +93,7 @@ export default function ProfileScreen() {
       </View>
 
       {/* ── AI Insights ────────────────────────────── */}
-      {user?.role === 'PARTICIPANT' && (
-        <View style={[s.section, { backgroundColor: '#EEEDFE', borderColor: '#D3D0FB' }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: 8 }}>
-            {/* <Text style={{ fontSize: 18, marginRight: 8 }}>✨</Text> */}
-            <Text style={{ fontSize: 14, fontWeight: '700', color: theme.primaryColor, letterSpacing: 0.5 }}>AI STRATEGIC BRIEFING</Text>
-            {aiAdvice && (
-              <View style={{ marginLeft: 'auto', backgroundColor: theme.primaryColor, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ fontSize: 8, color: '#fff', fontWeight: '800' }}>LATEST</Text>
-              </View>
-            )}
-          </View>
-          <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-            {loadingAdvice ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                <ActivityIndicator size="small" color={theme.primaryColor} />
-                <Text style={{ fontSize: 13, color: '#5C54A4' }}>
-                  Analyzing your daily trends, please wait...
-                </Text>
-              </View>
-            ) : aiAdvice ? (
-              <>
-                {aiAdvice.createdAt && (
-                  <Text style={{ fontSize: 11, color: '#8E86DA', marginBottom: 12, fontWeight: '500' }}>
-                    Generated: {new Date(aiAdvice.createdAt).toLocaleDateString()} at {new Date(aiAdvice.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                )}
-                
-                <Text style={{ fontSize: 13, color: '#3A3385', lineHeight: 22 }}>
-                  {aiAdvice.adviceText}
-                </Text>
-
-                <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderColor: '#D3D0FB', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View>
-                    <Text style={{ fontSize: 10, color: '#5C54A4', textTransform: 'uppercase', fontWeight: '700', letterSpacing: 0.5 }}>Analysis Mode: {aiAdvice.tone}</Text>
-                    <Text style={{ fontSize: 9, color: '#8E86DA', marginTop: 2 }}>Next reset at 00:00 UTC</Text>
-                  </View>
-                  {usage && (
-                    <View style={{ backgroundColor: '#D3D0FB', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
-                      <Text style={{ fontSize: 10, color: '#3A3385', fontWeight: '800' }}>
-                        {usage.attemptsToday}/{usage.dailyLimit} REQUESTS
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleGenerateAdvice}
-                  disabled={usage?.remaining === 0}
-                  style={{
-                    marginTop: 16,
-                    backgroundColor: usage?.remaining === 0 ? '#C0BBEB' : theme.primaryColor,
-                    paddingVertical: 12,
-                    borderRadius: 8,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>
-                    {usage?.remaining === 0 ? 'Daily Limit Reached' : 'Get New Strategy'}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={{ marginTop: 16, backgroundColor: 'rgba(255,255,255,0.5)', padding: 12, borderRadius: 8 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#3A3385', marginBottom: 4 }}>How it works:</Text>
-                  <Text style={{ fontSize: 10, color: '#5C54A4', lineHeight: 15 }}>
-                    Our AI analyzes your current rank, vote trends, and days remaining to build a custom mobilization plan. Check back often for fresh insights!
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#5C54A4', textAlign: 'center', marginVertical: 8, opacity: 0.7 }}>
-                  No campaign advice generated yet. Let the AI help you win!
-                </Text>
-                <TouchableOpacity
-                  onPress={handleGenerateAdvice}
-                  style={{
-                    marginTop: 8,
-                    backgroundColor: theme.primaryColor,
-                    paddingHorizontal: 20,
-                    paddingVertical: 12,
-                    borderRadius: 8,
-                    flexDirection: 'row',
-                    alignItems: 'center'
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="rocket" size={16} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Start Strategy Session</Text>
-                </TouchableOpacity>
-
-                <View style={{ marginTop: 16, width: '100%', backgroundColor: 'rgba(255,255,255,0.5)', padding: 12, borderRadius: 8 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#3A3385', marginBottom: 4 }}>How it works:</Text>
-                  <Text style={{ fontSize: 10, color: '#5C54A4', lineHeight: 15 }}>
-                    Our AI analyzes your current rank, vote trends, and days remaining to build a custom mobilization plan.
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
+      {/* Extracted to /dashboard/ai-briefing screen */}
 
       {/* ── Account settings ───────────────────────── */}
       <View style={s.section}>
@@ -244,16 +101,38 @@ export default function ProfileScreen() {
         <Text style={s.sectionTitle}>Account</Text>
 
         {user?.role === 'PARTICIPANT' && (
-          <MenuItem
-            icon="rocket"
-            iconBg="#EAF3DE"
-            iconColor="#3B6D11"
-            label="Mobilize (Dashboard)"
-            onPress={() => router.push('/dashboard')}
-            border={border}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-          />
+          <>
+            <MenuItem
+              icon="rocket"
+              iconBg="#EAF3DE"
+              iconColor="#3B6D11"
+              label="Mobilize (Dashboard)"
+              onPress={() => router.push('/dashboard')}
+              border={border}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+            <MenuItem
+              icon="sparkles"
+              iconBg="#EEEDFE"
+              iconColor={theme.primaryColor}
+              label="AI Strategic Briefing"
+              onPress={() => router.push('/dashboard/ai-briefing')}
+              border={border}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+            <MenuItem
+              icon="flame"
+              iconBg="#FEF2F2"
+              iconColor="#FE2C55"
+              label="Manage Daily Stories"
+              onPress={() => router.push('/dashboard/stories')}
+              border={border}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+          </>
         )}
 
 
@@ -398,9 +277,20 @@ export default function ProfileScreen() {
         />
 
         <MenuItem
-          icon="information-circle"
+          icon="link"
           iconBg="#E6F1FB"
           iconColor="#185FA5"
+          label="Blockchain Transparency"
+          onPress={() => router.push('/settings/blockchain')}
+          border={border}
+          textPrimary={textPrimary}
+          textSecondary={textSecondary}
+        />
+
+        <MenuItem
+          icon="information-circle"
+          iconBg="#EAF3DE"
+          iconColor="#3B6D11"
           label="About Fame Africa"
           onPress={() => router.push('/about' as any)}
           border={border}

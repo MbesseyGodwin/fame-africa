@@ -78,7 +78,7 @@ export default function VideoPlayer({ uri, posterUri, style }: VideoPlayerProps)
   // ── Sync videoUri to player ──────────────────────────────────
   useEffect(() => {
     if (videoUri && videoUri !== uri) {
-      player.replace(videoUri)
+      player.replaceAsync(videoUri)
     }
   }, [videoUri, player])
 

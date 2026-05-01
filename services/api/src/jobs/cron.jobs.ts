@@ -11,6 +11,10 @@ import { notificationService } from '../modules/notifications/notification.servi
 import { BattlesService } from '../modules/battles/battles.service'
 import { streamingService } from '../modules/streaming/streaming.service'
 import { PaymentsService } from '../modules/payments/payments.service'
+import { getAccessToken, uploadToDropbox } from '../utils/dropboxUploader'
+import axios from 'axios'
+import fs from 'fs'
+import path from 'path'
 
 export function startCronJobs() {
   const eliminationSchedule = process.env.ELIMINATION_CRON_SCHEDULE || '59 23 * * *'
@@ -102,6 +106,26 @@ export function startCronJobs() {
       await fulfillPendingMegaVotes()
     } catch (error) {
       logger.error('Mega Vote cleanup failed:', error)
+    }
+  })
+
+  // Cleanup expired Fame Stories (Daily Vlogs) every hour
+  cron.schedule('0 * * * *', async () => {
+    logger.info('Running expired Stories cleanup...')
+    try {
+      await cleanupExpiredStories()
+    } catch (error) {
+      logger.error('Stories cleanup failed:', error)
+    }
+  })
+
+  // Export and clean up API logs every day at 1:00 AM
+  cron.schedule('0 1 * * *', async () => {
+    logger.info('Running daily API log export job...')
+    try {
+      await exportLogsToCsvJob()
+    } catch (error) {
+      logger.error('Log export job failed:', error)
     }
   })
 
@@ -405,6 +429,113 @@ async function fulfillPendingMegaVotes() {
   for (const tx of unfulfilled) {
     logger.info(`Fulfilling missed transaction: ${tx.reference}`)
     await PaymentsService.handleSuccessfulPayment(tx.reference, Number(tx.amount))
+  }
+}
+
+async function cleanupExpiredStories() {
+  const expiredStories = await prisma.participantStory.findMany({
+    where: { expiresAt: { lte: new Date() } }
+  })
+
+  if (expiredStories.length === 0) return
+
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.AGORA_S3_ACCESS_KEY
+  const PROJECT_ID = 'pkctjqtsisciblmihjvd'
+  const BUCKET = 'stories'
+
+  for (const story of expiredStories) {
+    // Delete from Dropbox
+    if (story.videoUrl.startsWith('/fame-africa/stories')) {
+      try {
+        const token = await getAccessToken()
+        await axios.post(
+          'https://api.dropboxapi.com/2/files/delete_v2',
+          { path: story.videoUrl },
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+        )
+      } catch (e: any) {
+        logger.warn(`Failed to delete Dropbox file for story ${story.id}: ${e.message}`)
+      }
+    }
+
+    // Delete from Supabase S3 (Legacy check)
+    if (SUPABASE_KEY && story.videoUrl.includes('supabase.co')) {
+      try {
+        const filePath = story.videoUrl.split(`/public/${BUCKET}/`)[1]
+        if (filePath) {
+          await axios.delete(
+            `https://${PROJECT_ID}.supabase.co/storage/v1/object/${BUCKET}/${filePath}`,
+            { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY } }
+          )
+        }
+      } catch (e: any) {
+        logger.warn(`Failed to delete video file for story ${story.id}: ${e.message}`)
+      }
+    }
+  }
+
+  // Delete records from database
+  await prisma.participantStory.deleteMany({
+    where: { id: { in: expiredStories.map(s => s.id) } }
+  })
+
+  logger.info(`Cleaned up ${expiredStories.length} expired stories.`)
+}
+
+async function exportLogsToCsvJob() {
+  const LOGS_DIR = path.join(__dirname, '../../logs')
+  if (!fs.existsSync(LOGS_DIR)) return
+
+  const todayStr = new Date().toISOString().split('T')[0]
+  const files = fs.readdirSync(LOGS_DIR)
+  
+  for (const file of files) {
+    if (file.endsWith('.jsonl') && !file.includes(todayStr)) {
+      const filePath = path.join(LOGS_DIR, file)
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf-8')
+        const lines = fileContent.split('\n').filter(Boolean)
+        
+        if (lines.length === 0) {
+          fs.unlinkSync(filePath)
+          continue
+        }
+
+        let csv = 'Timestamp,Method,Path,StatusCode,DurationMs,IP,UserAgent,Query,RequestBody,ResponseBody\n'
+        
+        for (const line of lines) {
+          try {
+            const log = JSON.parse(line)
+            const dateStr = new Date(log.timestamp).toLocaleString()
+            const row = [
+              `"${dateStr}"`,
+              `"${log.method || ''}"`,
+              `"${log.path || ''}"`,
+              `"${log.statusCode || ''}"`,
+              `"${log.durationMs || ''}"`,
+              `"${log.ip || ''}"`,
+              `"${(log.userAgent || '').replace(/"/g, '""')}"`,
+              `"${JSON.stringify(log.requestQuery || {}).replace(/"/g, '""')}"`,
+              `"${JSON.stringify(log.requestBody || {}).replace(/"/g, '""')}"`,
+              `"${JSON.stringify(log.responseBody || {}).replace(/"/g, '""')}"`
+            ]
+            csv += row.join(',') + '\n'
+          } catch (e) {
+            // skip invalid lines
+          }
+        }
+        
+        const datePart = file.split('api-traffic-')[1].split('.jsonl')[0]
+        const dropboxPath = `/server_logs/API_Logs_${datePart}.csv`
+        
+        await uploadToDropbox(Buffer.from(csv), dropboxPath)
+        logger.info(`Successfully exported API logs for ${datePart} to Dropbox`)
+        
+        fs.unlinkSync(filePath)
+      } catch (err: any) {
+        logger.error(`Failed to export log file ${file}: ${err.message}`)
+      }
+    }
   }
 }
 

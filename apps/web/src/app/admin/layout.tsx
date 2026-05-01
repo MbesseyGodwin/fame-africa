@@ -8,7 +8,7 @@ import {
   LayoutDashboard, PieChart, Users, Sword, Vote, 
   Settings, Megaphone, Gift, User, ShieldCheck, 
   CreditCard, Radio, Wrench, ShieldAlert, ClipboardList, 
-  Flag, LogOut, Clock
+  Flag, LogOut, Clock, PlaySquare
 } from 'lucide-react'
 
 export default function AdminLayout({
@@ -74,6 +74,7 @@ export default function AdminLayout({
                 <SidebarItem href="/admin" active={isActive('/admin')} label="Overview" icon={<LayoutDashboard className="w-4 h-4" /> as any} />
                 <SidebarItem href="/admin/analytics" active={isActive('/admin/analytics')} label="Deep Analytics" icon={<PieChart className="w-4 h-4" /> as any} />
                 <SidebarItem href="/admin/participants" active={isActive('/admin/participants')} label="Participants" icon={<Users className="w-4 h-4" /> as any} />
+                <SidebarItem href="/admin/stories" active={isActive('/admin/stories')} label="Daily Stories" icon={<PlaySquare className="w-4 h-4" /> as any} />
                 <SidebarItem href="/admin/eliminations" active={isActive('/admin/eliminations')} label="Eliminations" icon={<Sword className="w-4 h-4" /> as any} />
                 <SidebarItem href="/admin/votes" active={isActive('/admin/votes')} label="Vote Logs" icon={<Vote className="w-4 h-4" /> as any} />
               </nav>

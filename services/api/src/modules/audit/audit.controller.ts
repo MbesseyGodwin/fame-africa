@@ -36,3 +36,17 @@ export async function triggerSeal(req: Request, res: Response, next: NextFunctio
     next(error);
   }
 }
+
+import { prisma } from '../../lib/prisma';
+
+export async function getLedger(req: Request, res: Response, next: NextFunction) {
+  try {
+    const proofs = await prisma.auditProof.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+    res.json({ success: true, data: proofs });
+  } catch (error) {
+    next(error);
+  }
+}

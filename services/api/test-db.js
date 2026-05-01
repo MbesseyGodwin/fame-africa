@@ -1,18 +1,12 @@
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-
-async function main() {
-  try {
-    console.log('Attempting to connect to database...')
-    const userCount = await prisma.user.count()
-    console.log(`Connection successful. User count: ${userCount}`)
-  } catch (error) {
-    console.error('Database connection failed:')
-    console.error(error)
-  } finally {
-    await prisma.$disconnect()
-  }
+async function check() {
+  const proofs = await prisma.auditProof.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 5
+  });
+  console.log(JSON.stringify(proofs, null, 2));
 }
 
-main()
+check().catch(console.error).finally(() => prisma.$disconnect());

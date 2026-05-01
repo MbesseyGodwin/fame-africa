@@ -110,7 +110,7 @@ export default function ParticipantEditProfileScreen() {
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.6,
@@ -233,6 +233,25 @@ export default function ParticipantEditProfileScreen() {
           </View>
 
           <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+            {/* Campaign Tools */}
+            <View style={[s.card, { marginBottom: 12 }]}>
+              <Text style={s.cardTitle}>CAMPAIGN TOOLS</Text>
+              <TouchableOpacity 
+                style={s.campaignBtn}
+                onPress={() => router.push('/dashboard/stories')}
+                activeOpacity={0.7}
+              >
+                <View style={[s.campaignBtnIcon, { backgroundColor: '#FE2C55' }]}>
+                  <Ionicons name="flame" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.campaignBtnTitle}>Manage Daily Stories</Text>
+                  <Text style={s.campaignBtnSub}>Upload vlogs to engage voters & stay viral</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={textSecondary} />
+              </TouchableOpacity>
+            </View>
+
             {/* Editable Fields Card */}
             <View style={s.card}>
               <Text style={s.cardTitle}>BIO & LOCATION</Text>
@@ -582,6 +601,31 @@ function makeStyles(theme: any, bg: string, surface: string, textPrimary: string
     imageEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: theme.primaryColor, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: surface },
     imageHints: { flex: 1, marginLeft: 16 },
     imageHintTitle: { fontSize: 14, fontWeight: '700', color: textPrimary, marginBottom: 4 },
-    imageHintText: { fontSize: 12, color: textSecondary, lineHeight: 16 }
+    imageHintText: { fontSize: 12, color: textSecondary, lineHeight: 16 },
+
+    // Campaign Tools
+    campaignBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      gap: 12,
+    },
+    campaignBtnIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    campaignBtnTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: textPrimary,
+      marginBottom: 2,
+    },
+    campaignBtnSub: {
+      fontSize: 12,
+      color: textSecondary,
+    },
   })
 }

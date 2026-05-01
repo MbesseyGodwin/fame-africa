@@ -16,6 +16,7 @@ import { streamingApi } from '../../utils/api'
 import LiveStreamCard from '../../components/LiveStreamCard'
 import ReplayCard from '../../components/ReplayCard'
 import { InfoTooltip } from '../../components/common/InfoTooltip'
+import StoryViewer from '../../components/StoryViewer'
 
 const { width } = Dimensions.get('window')
 
@@ -185,6 +186,9 @@ export default function HomeScreen() {
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primaryColor} />}
       >
+        {/* Fame Stories (Daily Vlogs) */}
+        <StoryViewer />
+
         {/* Live Now Carousel */}
         {liveRes?.data?.data?.length > 0 && (
           <View style={{ marginBottom: 20 }}>

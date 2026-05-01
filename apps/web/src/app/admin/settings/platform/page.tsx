@@ -27,7 +27,11 @@ export default function AdminSettingsPlatform() {
     ai_bio_max_words: '80',
     ai_agent_enabled: 'true',
     ai_strategy_daily_limit: '2',
-    ai_strategy_max_words: '250'
+    ai_strategy_max_words: '250',
+    story_max_file_size_mb: '50',
+    story_daily_limit: '5',
+    story_allowed_formats: '.mp4,.mov',
+    story_moderation_enabled: 'false'
   })
 
   const { data } = useQuery({
@@ -62,6 +66,10 @@ export default function AdminSettingsPlatform() {
         ai_agent_enabled: getValue('ai_agent_enabled') || prev.ai_agent_enabled,
         ai_strategy_daily_limit: getValue('ai_strategy_daily_limit') || prev.ai_strategy_daily_limit,
         ai_strategy_max_words: getValue('ai_strategy_max_words') || prev.ai_strategy_max_words,
+        story_max_file_size_mb: getValue('story_max_file_size_mb') || prev.story_max_file_size_mb,
+        story_daily_limit: getValue('story_daily_limit') || prev.story_daily_limit,
+        story_allowed_formats: getValue('story_allowed_formats') || prev.story_allowed_formats,
+        story_moderation_enabled: getValue('story_moderation_enabled') || prev.story_moderation_enabled,
       }))
     }
   }, [data])
@@ -126,6 +134,24 @@ export default function AdminSettingsPlatform() {
               <option value="RANDOM">Random (Coin Flip)</option>
             </select>
           </div>
+        </div>
+
+        {/* Daily Stories Configuration */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-100 dark:border-gray-800 pb-2 flex items-center gap-2">
+            Daily Stories Management
+            <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">New</span>
+          </h2>
+          <NumberInput label="Max Video Size (MB)" desc="Maximum file size allowed for participant video uploads." field="story_max_file_size_mb" />
+          <NumberInput label="Daily Upload Limit" desc="Number of stories a participant can post per day." field="story_daily_limit" />
+          
+          <div className="py-3">
+            <label className="block text-[14px] mb-1.5 font-medium">Allowed Formats</label>
+            <div className="text-xs text-gray-500 mb-2">Comma-separated list of allowed video extensions.</div>
+            <input type="text" value={flags.story_allowed_formats} onChange={e => setFlags({ ...flags, story_allowed_formats: e.target.value })} disabled={!cycleId} className="w-full max-w-sm px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-950 text-sm focus:ring-primary disabled:opacity-50" />
+          </div>
+
+          <Toggle label="Enable Story Moderation" desc="If enabled, stories will remain hidden until an admin approves them." field="story_moderation_enabled" />
         </div>
 
         {/* AI Agent Configuration */}

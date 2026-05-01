@@ -99,6 +99,13 @@ adminRouter.put('/users/:id/unban', AdminController.unbanUser)
 adminRouter.post('/users/:id/logout', AdminController.forceLogout)
 adminRouter.get('/users/:id/login-history', AdminController.getUserLoginHistory)
 
+// Stories
+adminRouter.get('/stories', AdminController.listAllStories)
+adminRouter.delete('/stories/:id', AdminController.removeStory)
+adminRouter.put('/stories/:id/approve', AdminController.approveStory)
+adminRouter.post('/participants/:id/stories/ban', AdminController.banFromStories)
+adminRouter.post('/participants/:id/stories/unban', AdminController.unbanFromStories)
+
 // Platform stats
 adminRouter.get('/stats/overview', AdminController.getPlatformStats)
 adminRouter.get('/stats/votes-over-time', AdminController.getVoteTrends)

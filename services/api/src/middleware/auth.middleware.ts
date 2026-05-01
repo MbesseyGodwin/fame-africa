@@ -3,10 +3,12 @@ import { Request, Response, NextFunction } from 'express'
 import * as jwt from 'jsonwebtoken'
 import { prisma } from '../index'
 import { ApiResponse } from '../utils/response'
+import { logger } from '../utils/logger'
 import * as SecurityService from '../modules/security/security.service'
 
 export async function authenticate(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
+  logger.info(`[Auth] Authenticating ${req.method} ${req.originalUrl}`)
   if (!authHeader) {
     return ApiResponse.unauthorized(res, 'Authentication required')
   }

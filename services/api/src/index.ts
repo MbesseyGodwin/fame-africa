@@ -33,6 +33,7 @@ import { aiRouter } from './modules/ai-strategist/ai-strategist.routes'
 
 import { errorHandler } from './middleware/error.middleware'
 import { rateLimiter } from './middleware/rateLimiter.middleware'
+import { requestLoggerMiddleware } from './middleware/requestLogger.middleware'
 import { setupRealtimeHandlers } from './realtime/socket.handlers'
 import { startCronJobs } from './jobs/cron.jobs'
 import { logger } from './utils/logger'
@@ -66,6 +67,7 @@ app.use(cors({
 }))
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
+app.use(requestLoggerMiddleware)
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 app.use(rateLimiter)
 

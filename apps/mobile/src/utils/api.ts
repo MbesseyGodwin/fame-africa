@@ -12,50 +12,78 @@ export const api = axios.create({
 })
 
 /**
- * Specialized instance for large media uploads
- * Increased to 3 minutes to accommodate up to 50MB videos on mobile signals
+ * Specialized native fetch wrapper for large media uploads
+ * Axios has known bugs with FormData on React Native Android.
  */
-export const uploadApi = axios.create({
-  baseURL: API_URL,
-  timeout: 180000,
+export async function nativeFetchUpload(endpoint: string, method: 'POST' | 'PUT', formData: FormData) {
+  const token = await SecureStore.getItemAsync('accessToken')
+  const url = `${API_URL}${endpoint}`
+
+  console.log(`[Native Fetch Upload] ${method} ${url}`)
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      body: formData,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+  } catch (fetchError: any) {
+    console.error('[Native Fetch] CRITICAL ERROR during fetch:', fetchError.message)
+    throw fetchError
+  }
+
+  const text = await response.text()
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch {
+    data = text
+  }
+
+  if (!response.ok) {
+    const error: any = new Error(data?.message || `Upload failed with status ${response.status}`)
+    error.response = { data, status: response.status }
+    throw error
+  }
+
+  return { data }
+}
+
+
+// Apply interceptors to general api instance
+api.interceptors.request.use(async (config) => {
+  // Log the full URL for debugging
+  const fullUrl = `${config.baseURL}${config.url}`
+  console.log(`[API Request] ${config.method?.toUpperCase()} ${fullUrl}`)
+
+  const token = await SecureStore.getItemAsync('accessToken')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
 })
 
-
-// Apply interceptors to both instances
-const instances = [api, uploadApi]
-
-instances.forEach(instance => {
-  instance.interceptors.request.use(async (config) => {
-    // Log the full URL for debugging
-    const fullUrl = `${config.baseURL}${config.url}`
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${fullUrl}`)
-    
-    const token = await SecureStore.getItemAsync('accessToken')
-    if (token) config.headers.Authorization = `Bearer ${token}`
-    return config
-  })
-
-  instance.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      if (error.response?.status === 401) {
-        const refreshToken = await SecureStore.getItemAsync('refreshToken')
-        if (refreshToken) {
-          try {
-            const { data } = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken })
-            await SecureStore.setItemAsync('accessToken', data.data.accessToken)
-            error.config.headers.Authorization = `Bearer ${data.data.accessToken}`
-            return instance(error.config)
-          } catch {
-            await SecureStore.deleteItemAsync('accessToken')
-            await SecureStore.deleteItemAsync('refreshToken')
-          }
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      const refreshToken = await SecureStore.getItemAsync('refreshToken')
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken })
+          await SecureStore.setItemAsync('accessToken', data.data.accessToken)
+          error.config.headers.Authorization = `Bearer ${data.data.accessToken}`
+          return api(error.config)
+        } catch {
+          await SecureStore.deleteItemAsync('accessToken')
+          await SecureStore.deleteItemAsync('refreshToken')
         }
       }
-      return Promise.reject(error)
     }
-  )
-})
+    return Promise.reject(error)
+  }
+)
 
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -77,7 +105,7 @@ export const authApi = {
 export const usersApi = {
   getMe: () => api.get('/users/me'),
   updateMe: (data: any) => api.put('/users/me', data),
-  updatePhoto: (formData: FormData) => uploadApi.post('/users/me/photo', formData),
+  updatePhoto: (formData: FormData) => nativeFetchUpload('/users/me/photo', 'POST', formData),
   getPreferences: () => api.get('/users/me/preferences'),
   updatePreferences: (data: any) => api.put('/users/me/preferences', data),
   changePassword: (data: any) => api.put('/users/me/password', data),
@@ -101,7 +129,7 @@ export const participantsApi = {
   getBySlug: (slug: string) => api.get(`/participants/${slug}`),
   getDashboard: () => api.get('/participants/me/dashboard'),
   getAnalytics: () => api.get('/participants/me/analytics'),
-  register: (data: any) => uploadApi.post('/participants/register', data),
+  register: (data: any) => nativeFetchUpload('/participants/register', 'POST', data),
   getPublicVotes: (slug: string, params?: any) => api.get(`/participants/${slug}/public-votes`, { params }),
   getPublicStans: (slug: string, params?: any) => api.get(`/participants/${slug}/public-stans`, { params }),
   getTopFans: (slug: string) => api.get(`/participants/${slug}/top-fans`),
@@ -109,13 +137,13 @@ export const participantsApi = {
   confirmWithdrawal: (token: string) => api.post('/participants/me/withdraw/confirm', { token }),
   getAiAdvice: () => api.get('/participants/me/ai-advice'),
   generateAiAdvice: () => api.post('/participants/me/ai-advice'),
-  updateProfile: (data: any) => uploadApi.put('/participants/me/profile', data),
-  getDiscoveryFeed: (params?: { 
-    limit?: number; 
-    cursor?: string; 
-    category?: string; 
-    state?: string; 
-    search?: string 
+  updateProfile: (data: FormData) => nativeFetchUpload('/participants/me/profile', 'PUT', data),
+  getDiscoveryFeed: (params?: {
+    limit?: number;
+    cursor?: string;
+    category?: string;
+    state?: string;
+    search?: string
   }) => api.get('/participants/discovery/videos', { params }),
   addVideo: (data: { url: string; title?: string }) => api.post('/participants/me/videos', data),
   updateVideo: (videoId: string, data: { url?: string; title?: string }) => api.put(`/participants/me/videos/${videoId}`, data),
@@ -128,6 +156,7 @@ export const participantsApi = {
 // ── Audit ─────────────────────────────────────────────────────
 export const auditApi = {
   verifyVote: (voteId: string) => api.get(`/audit/verify/${voteId}`),
+  getLedger: () => api.get('/audit/ledger'),
 }
 
 // ── Voting ────────────────────────────────────────────────────
@@ -225,21 +254,21 @@ export const moderationApi = {
 export const battlesApi = {
   getActive: (cycleId: string) => api.get('/battles/active', { params: { cycleId } }),
   getPast: (cycleId: string) => api.get('/battles/past', { params: { cycleId } }),
-  requestOtp: (battleId: string, data: { participantId: string, voterEmail: string, voterPhone?: string }) => 
+  requestOtp: (battleId: string, data: { participantId: string, voterEmail: string, voterPhone?: string }) =>
     api.post(`/battles/${battleId}/otp`, data),
-  vote: (battleId: string, data: { participantId: string, voterEmail: string, otpCode: string, voterPhone?: string }) => 
+  vote: (battleId: string, data: { participantId: string, voterEmail: string, otpCode: string, voterPhone?: string }) =>
     api.post(`/battles/${battleId}/vote`, data),
 }
 
 // ── Payments ──────────────────────────────────────────────────
 export const paymentsApi = {
   getPackages: () => api.get('/payments/mega-vote-packages'),
-  initializeMegaVote: (data: { 
-    participantId: string, 
-    amount: number, 
-    currency: string, 
-    reference: string, 
-    voteCount: number 
+  initializeMegaVote: (data: {
+    participantId: string,
+    amount: number,
+    currency: string,
+    reference: string,
+    voteCount: number
   }) => api.post('/payments/mega-vote/initialize', data),
   verifyPayment: (data: { transactionId: string, reference: string }) => api.post('/payments/verify', data),
 }
@@ -249,3 +278,10 @@ export const aiApi = {
   generateBio: (data: { name: string, draftBio?: string }) => api.post('/ai/generate-bio', data),
 }
 
+// ── Stories ───────────────────────────────────────────────────
+export const storiesApi = {
+  getActiveStories: () => api.get('/participants/stories'),
+  getMyStories: () => api.get('/participants/me/stories'),
+  addStory: (data: FormData) => nativeFetchUpload('/participants/me/stories', 'POST', data),
+  deleteStory: (storyId: string) => api.delete(`/participants/me/stories/${storyId}`),
+}

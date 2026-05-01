@@ -4,13 +4,15 @@ import React, { useEffect, useState, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Alert, Image, ActivityIndicator,
-  Dimensions, StatusBar
+  Dimensions, StatusBar, Modal, TextInput
 } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import * as Clipboard from 'expo-clipboard'
 import * as Sharing from 'expo-sharing'
+import * as FileSystem from 'expo-file-system/legacy'
 import { useTheme } from '../../context/ThemeContext'
-import { participantsApi, arenaApi } from '../../utils/api'
+import { participantsApi, arenaApi, storiesApi } from '../../utils/api'
+import * as ImagePicker from 'expo-image-picker'
 import { io } from 'socket.io-client'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
@@ -20,6 +22,10 @@ import QRCode from 'react-native-qrcode-svg'
 import ViewShot, { captureRef } from 'react-native-view-shot'
 import SponsorTicker from '../../components/SponsorTicker'
 import { LinearGradient } from 'expo-linear-gradient'
+
+import { useVideoPlayer, VideoView } from 'expo-video'
+import { useStoryUpload } from '../../hooks/useStoryUpload'
+import { StoryPreviewModal } from '../../components/StoryPreviewModal'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://fameafrica-api.onrender.com'
 const { width, height } = Dimensions.get('window')
@@ -63,6 +69,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: any }) {
   )
 }
 
+
 function ActionButton({ icon, label, color, onPress }: { icon: any; label: string; color: string; onPress: () => void }) {
   return (
     <TouchableOpacity
@@ -96,6 +103,12 @@ export default function DashboardScreen() {
   const [liveVotes, setLiveVotes] = useState<number | null>(null)
   const [capturing, setCapturing] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  
+  // WhatsApp Style Stories
+  const { 
+    pickStory, confirmUpload, cancelPreview, isUploading,
+    showPreviewModal, pendingStory, storyCaption, setStoryCaption 
+  } = useStoryUpload()
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -198,6 +211,10 @@ export default function DashboardScreen() {
     setTimeout(() => setLinkCopied(false), 2500)
   }
 
+  const handleUploadStory = pickStory
+  const confirmAndUploadStory = confirmUpload
+
+
   const HERO_H = height * 0.60   // avatar hero takes ~50% of screen height
 
   return (
@@ -246,7 +263,7 @@ export default function DashboardScreen() {
               <Text style={s.catChipText}>{participant.category?.toUpperCase()}</Text>
             </View>
 
-            {/* Name — large, bold */}
+
             <Text style={s.heroName}>{participant.displayName}</Text>
 
             {/* Location */}
@@ -315,6 +332,20 @@ export default function DashboardScreen() {
               label="Gallery"
               color="#534AB7"
               onPress={() => router.push(`/vote/${participant.voteLinkSlug}`)}
+            />
+
+            <ActionButton
+              icon={isUploading ? "hourglass-outline" : "camera"}
+              label="Story"
+              color="#F59E0B"
+              onPress={pickStory}
+            />
+
+            <ActionButton
+              icon="list-outline"
+              label="Manage"
+              color="#64748B"
+              onPress={() => router.push('/dashboard/stories')}
             />
 
             <TouchableOpacity
@@ -548,6 +579,28 @@ export default function DashboardScreen() {
 
         </View>
       </ScrollView>
+
+      {/* Background Upload Modal */}
+      <Modal visible={isUploading} transparent animationType="fade">
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <ActivityIndicator size="large" color={C.accent} style={{ marginBottom: 16 }} />
+            <Text style={s.modalTitle}>Uploading Story...</Text>
+            <Text style={s.modalSub}>This might take a moment depending on your network.</Text>
+          </View>
+        </View>
+      </Modal>
+
+      <StoryPreviewModal
+        visible={showPreviewModal}
+        videoUri={pendingStory?.uri}
+        onClose={cancelPreview}
+        onConfirm={confirmUpload}
+        caption={storyCaption}
+        setCaption={setStoryCaption}
+        accentColor={C.accent}
+      />
+
     </View>
   )
 }
@@ -715,4 +768,69 @@ const s = StyleSheet.create({
   linkText: { flex: 1, color: C.inkMid, fontSize: 13 },
   copyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
   copyText: { fontSize: 14, fontWeight: '700' },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: C.white, borderRadius: 24, padding: 32, width: '100%', alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: C.ink, marginBottom: 8, textAlign: 'center' },
+  modalSub: { fontSize: 14, color: C.inkLight, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  modalBtn: { backgroundColor: C.bg, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 100, borderWidth: 1, borderColor: C.border },
+  modalBtnText: { color: C.inkMid, fontSize: 14, fontWeight: '700' },
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  previewVideo: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  previewHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  previewCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  captionInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 12,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  captionInput: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 16,
+    maxHeight: 100,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+  },
+  sendStoryBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 })

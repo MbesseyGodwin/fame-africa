@@ -8,6 +8,7 @@ import { prisma } from '../../index'
 import { ApiResponse } from '../../utils/response'
 import * as ParticipantsController from './participants.controller'
 import * as ParticipantVideosController from './participant-videos.controller'
+import * as ParticipantStoriesController from './participant-stories.controller'
 import { upload } from '../../middleware/upload'
 
 export const participantsRouter = Router()
@@ -59,6 +60,9 @@ participantsRouter.get('/search', async (req: any, res: any, next: any) => {
     return ApiResponse.paginated(res, participants, total, parseInt(page), parseInt(limit))
   } catch (error) { next(error) }
 })
+
+// Stories (Daily Vlogs) - MUST be before /:slug
+participantsRouter.get('/stories', ParticipantStoriesController.getActiveStories)
 
 participantsRouter.get('/:slug', [param('slug').trim().notEmpty()], optionalAuthenticate, validateRequest, ParticipantsController.getParticipant)
 
@@ -155,15 +159,16 @@ participantsRouter.put('/me/profile',
   authenticate, 
   upload.single('photo') as any,
   [
-    body('displayName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Display name must be 2-50 characters'),
-    body('bio').optional().trim().isLength({ min: 10, max: 1000 }).withMessage('Bio must be at least 10 characters'),
-    body('state').optional().trim().notEmpty().withMessage('State is required'),
-    body('city').optional().trim().notEmpty().withMessage('City is required'),
-    body('nationality').optional().trim().notEmpty().withMessage('Nationality is required'),
-    body('instagramUrl').optional().trim().isLength({ max: 100 }),
-    body('twitterUrl').optional().trim().isLength({ max: 100 }),
-    body('tiktokUrl').optional().trim().isLength({ max: 100 }),
-    body('youtubeUrl').optional().trim().isLength({ max: 100 }),
+    body('displayName').optional({ checkFalsy: true }).trim().isLength({ min: 2, max: 50 }).withMessage('Display name must be 2-50 characters'),
+    body('bio').optional({ checkFalsy: true }).trim().isLength({ min: 10, max: 1000 }).withMessage('Bio must be at least 10 characters'),
+    body('state').optional({ checkFalsy: true }).trim().notEmpty().withMessage('State is required'),
+    body('city').optional({ checkFalsy: true }).trim().notEmpty().withMessage('City is required'),
+    body('nationality').optional({ checkFalsy: true }).trim().notEmpty().withMessage('Nationality is required'),
+    body('instagramUrl').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
+    body('twitterUrl').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
+    body('tiktokUrl').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
+    body('youtubeUrl').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
+    body('embeddedVideoUrl').optional({ checkFalsy: true }).trim().isLength({ max: 200 }),
   ],
   validateRequest,
   ParticipantsController.updateMyProfile
@@ -175,6 +180,11 @@ participantsRouter.post('/me/ai-advice', authenticate, ParticipantsController.ge
 participantsRouter.post('/me/videos', authenticate, ParticipantVideosController.addVideo)
 participantsRouter.put('/me/videos/:videoId', authenticate, ParticipantVideosController.updateVideo)
 participantsRouter.delete('/me/videos/:videoId', authenticate, ParticipantVideosController.deleteVideo)
+
+// Stories (Daily Vlogs)
+participantsRouter.post('/me/stories', authenticate, upload.single('video') as any, ParticipantStoriesController.addStory)
+participantsRouter.get('/me/stories', authenticate, ParticipantStoriesController.getMyStories)
+participantsRouter.delete('/me/stories/:storyId', authenticate, ParticipantStoriesController.deleteStory)
 
 // ── Withdrawal ────────────────────────────────────────────────
 // Step 1: Request a withdrawal token (sends email)

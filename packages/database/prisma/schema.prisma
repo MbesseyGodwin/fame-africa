@@ -335,6 +335,7 @@ model Participant {
   battlesAsA          Battle[]          @relation("BattleA")
   battlesAsB          Battle[]          @relation("BattleB")
   videos              ParticipantVideo[]
+  stories             ParticipantStory[]
   videoLikes          ParticipantVideoLike[]
   videoComments       ParticipantVideoComment[]
   battleVotes         BattleVote[]
@@ -370,6 +371,22 @@ model ParticipantVideo {
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
   @@map("participant_videos")
+}
+
+model ParticipantStory {
+  id              String      @id @default(uuid())
+  participantId   String      @map("participant_id")
+  participant     Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  videoUrl        String      @map("video_url")
+  thumbnailUrl    String?     @map("thumbnail_url")
+  caption         String?     @db.Text
+  viewsCount      Int         @default(0) @map("views_count")
+  expiresAt       DateTime    @map("expires_at")
+  
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  @@index([participantId, expiresAt])
+  @@map("participant_stories")
 }
 
 model ParticipantVideoLike {

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '../src/context/ThemeContext'
 import { AuthProvider, useAuth } from '../src/context/AuthContext'
 import { registerForPushNotificationsAsync, setupNotificationHandlers } from '../src/utils/notifications'
+import { NetworkStatusBanner } from '../src/components/NetworkStatusBanner'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <NetworkStatusBanner />
           <InitialLayout />
         </AuthProvider>
       </ThemeProvider>

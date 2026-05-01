@@ -190,14 +190,21 @@ export const streamingController = {
   async getMyHistory(req: Request, res: Response) {
     try {
       const user = (req as any).user
+      logger.info(`[StreamingController] getMyHistory requested for user: ${user.id}`)
+      
       const participant = await streamingService.getParticipantByUserId(user.id)
       if (!participant) {
+        logger.warn(`[StreamingController] getMyHistory: Participant not found for user ${user.id}`)
         return res.status(404).json({ success: false, message: 'Participant profile not found' })
       }
       
+      logger.info(`[StreamingController] getMyHistory: Fetching history for participant ${participant.id}`)
       const history = await streamingService.getParticipantHistory(participant.id)
+      
+      logger.info(`[StreamingController] getMyHistory: Found ${history.length} streams`)
       return res.json({ success: true, data: history })
     } catch (error: any) {
+      logger.error(`[StreamingController] getMyHistory error: ${error.message}`, { stack: error.stack })
       return res.status(500).json({ success: false, message: error.message })
     }
   },

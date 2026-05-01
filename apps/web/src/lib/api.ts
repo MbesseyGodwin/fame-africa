@@ -240,6 +240,15 @@ export const adminApi = {
   // KYC
   getKycRecords: (params?: any) => api.get('/admin/kyc', { params }),
   updateKycStatus: (id: string, status: string, reason?: string) => api.put(`/admin/kyc/${id}/status`, { status, reason }),
+
+  // Stories Management
+  getStories: (params?: any) => api.get('/admin/stories', { params }),
+  deleteStory: (id: string) => api.delete(`/admin/stories/${id}`),
+  approveStory: (id: string) => api.put(`/admin/stories/${id}/approve`),
+  banUserFromStories: (participantId: string, reason: string) => 
+    api.post(`/admin/participants/${participantId}/stories/ban`, { reason }),
+  unbanUserFromStories: (participantId: string) => 
+    api.post(`/admin/participants/${participantId}/stories/unban`),
 }
 
 

@@ -209,3 +209,6 @@ Access Credentials
 Admin Access: admin@fameafrica.ng / Admin@FameAfrica2026!
 User/Voter Password: Password123! (used for all contestants and dummy voters)
 You can now log in to the Admin Dashboard and see a fully populated environment with real-time charts, participant rankings, and transaction logs!
+
+
+cd packages/database && yarn prisma db push && yarn prisma generate

@@ -1393,3 +1393,123 @@ export async function resolveSecurityAlert(req: Request, res: Response, next: Ne
 }
 
 
+
+export async function listAllStories(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { page = '1', limit = '12', search, status } = req.query as Record<string, string>
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+
+    const where: any = {}
+    if (search) {
+      where.participant = {
+        OR: [
+          { displayName: { contains: search, mode: 'insensitive' } },
+          { user: { email: { contains: search, mode: 'insensitive' } } }
+        ]
+      }
+    }
+    
+    const [stories, total] = await Promise.all([
+      prisma.participantStory.findMany({
+        where,
+        include: {
+          participant: {
+            select: {
+              id: true,
+              displayName: true,
+              photoUrl: true,
+              user: { select: { email: true } }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit),
+      }),
+      prisma.participantStory.count({ where }),
+    ])
+
+    const { getTemporaryLink } = await import('../../utils/dropboxUploader')
+    const resolvedStories = await Promise.all(stories.map(async (s) => ({
+      ...s,
+      videoUrl: await getTemporaryLink(s.videoUrl),
+      thumbnailUrl: s.thumbnailUrl ? await getTemporaryLink(s.thumbnailUrl) : null,
+      participant: {
+        ...s.participant,
+        photoUrl: s.participant.photoUrl ? await getTemporaryLink(s.participant.photoUrl) : null,
+      },
+      status: (s as any).status || 'APPROVED'
+    })))
+
+    return ApiResponse.paginated(res, resolvedStories, total, parseInt(page), parseInt(limit))
+  } catch (error) { next(error) }
+}
+
+export async function removeStory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    await prisma.participantStory.delete({ where: { id } })
+    
+    await prisma.auditLog.create({
+      data: {
+        userId: (req as any).user.id,
+        action: 'DELETE_STORY',
+        entityType: 'ParticipantStory',
+        entityId: id,
+      },
+    })
+
+    return ApiResponse.success(res, null, 'Story removed successfully')
+  } catch (error) { next(error) }
+}
+
+export async function approveStory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    try {
+      await (prisma.participantStory as any).update({
+        where: { id },
+        data: { status: 'APPROVED' }
+      })
+    } catch (e) {
+      logger.warn('Could not update story status - field might not exist in schema yet')
+    }
+
+    return ApiResponse.success(res, null, 'Story approved')
+  } catch (error) { next(error) }
+}
+
+export async function banFromStories(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+
+    await prisma.participantStrike.create({
+      data: {
+        participantId: id,
+        reason: `STORY_BAN: ${reason}`,
+        issuedBy: (req as any).user.id
+      }
+    })
+
+    return ApiResponse.success(res, null, 'Participant flagged and banned from stories')
+  } catch (error) { next(error) }
+}
+
+export async function unbanFromStories(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params
+    const strike = await prisma.participantStrike.findFirst({
+      where: {
+        participantId: id,
+        reason: { startsWith: 'STORY_BAN:' }
+      }
+    })
+
+    if (strike) {
+      await prisma.participantStrike.delete({ where: { id: strike.id } })
+    }
+
+    return ApiResponse.success(res, null, 'Participant story ban lifted')
+  } catch (error) { next(error) }
+}

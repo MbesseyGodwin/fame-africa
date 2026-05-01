@@ -483,8 +483,12 @@ export async function updateParticipantProfile(
   })
 
   // Handle Photo Upload if present
-  if (file) {
-    updateData.photoUrl = file.path || file.location // Depends on storage provider
+  if (file && file.buffer) {
+    const { uploadToDropbox } = await import('../../utils/dropboxUploader')
+    const ext = file.mimetype.split('/')[1] || 'jpg'
+    const photoPath = `/contestants/photos/${participant.cycleId}/${participant.voteLinkSlug}_photo_update_${Date.now()}.${ext}`
+    await uploadToDropbox(file.buffer, photoPath)
+    updateData.photoUrl = photoPath
   }
 
   if (Object.keys(updateData).length === 0) {
